@@ -1,37 +1,48 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Card from '../shared/Card';
-import Badge from '../shared/Badge';
-import LoadingSpinner from '../shared/LoadingSpinner';
-import { Users, Building, UserCheck, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
-import { format } from 'date-fns';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import Card from "../shared/Card";
+import Badge from "../shared/Badge";
+import LoadingSpinner from "../shared/LoadingSpinner";
+import {
+  Users,
+  Building,
+  UserCheck,
+  Clock,
+  CheckCircle,
+  XCircle,
+  TrendingUp,
+} from "lucide-react";
+import { format } from "date-fns";
+import axios from "axios";
 
 interface Analytics {
-  visitorCounts: {
+  visitors: {
     total: number;
     pending: number;
     approved: number;
     rejected: number;
-    checked_in: number;
-    checked_out: number;
+    checkedIn: number;
+    checkedOut: number;
     today: number;
     thisWeek: number;
     thisMonth: number;
   };
-  userCounts: {
-    residents: number;
-    guards: number;
+  users: {
+    totalResidents: number;
+    totalGuards: number;
     activeUsers: number;
   };
-  propertyCount: number;
-  recentVisitors: any[];
+  properties: {
+    total: number;
+  };
+  recentActivity: any[];
 }
 
 export default function AnalyticsDashboard() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAnalytics();
@@ -39,13 +50,41 @@ export default function AnalyticsDashboard() {
 
   const fetchAnalytics = async () => {
     setLoading(true);
+    setError(null);
+
     try {
-      const response = await axios.get('/api/superadmin/analytics');
+      const response = await axios.get("/api/superadmin/analytics");
+
       if (response.data.success) {
-        setAnalytics(response.data.data);
+        // Map the API response to match our interface
+        const apiData = response.data.data;
+
+        setAnalytics({
+          visitors: {
+            total: apiData.visitors?.total || 0,
+            pending: apiData.visitors?.pending || 0,
+            approved: apiData.visitors?.approved || 0,
+            rejected: apiData.visitors?.rejected || 0,
+            checkedIn: apiData.visitors?.checkedIn || 0,
+            checkedOut: apiData.visitors?.checkedOut || 0,
+            today: apiData.visitors?.today || 0,
+            thisWeek: apiData.visitors?.thisWeek || 0,
+            thisMonth: apiData.visitors?.thisMonth || 0,
+          },
+          users: {
+            totalResidents: apiData.users?.totalResidents || 0,
+            totalGuards: apiData.users?.totalGuards || 0,
+            activeUsers: apiData.users?.activeUsers || 0,
+          },
+          properties: {
+            total: apiData.properties?.total || 0,
+          },
+          recentActivity: apiData.recentActivity || [],
+        });
       }
-    } catch (error) {
-      console.error('Fetch analytics error:', error);
+    } catch (error: any) {
+      console.error("Fetch analytics error:", error);
+      setError(error.response?.data?.error || "Failed to load analytics");
     } finally {
       setLoading(false);
     }
@@ -55,71 +94,98 @@ export default function AnalyticsDashboard() {
     return <LoadingSpinner text="Loading analytics..." />;
   }
 
+  if (error) {
+    return (
+      <Card>
+        <div className="text-center py-12">
+          <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={fetchAnalytics}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </Card>
+    );
+  }
+
   if (!analytics) {
-    return <div>Failed to load analytics</div>;
+    return (
+      <Card>
+        <div className="text-center py-12">
+          <p className="text-gray-500">No analytics data available</p>
+        </div>
+      </Card>
+    );
   }
 
   const stats = [
     {
-      label: 'Total Visitors',
-      value: analytics.visitorCounts.total,
+      label: "Total Visitors",
+      value: analytics.visitors.total,
       icon: Users,
-      color: 'bg-blue-500',
+      color: "bg-blue-500",
     },
     {
-      label: 'Properties',
-      value: analytics.propertyCount,
+      label: "Properties",
+      value: analytics.properties.total,
       icon: Building,
-      color: 'bg-purple-500',
+      color: "bg-purple-500",
     },
     {
-      label: 'Total Residents',
-      value: analytics.userCounts.residents,
+      label: "Total Residents",
+      value: analytics.users.totalResidents,
       icon: UserCheck,
-      color: 'bg-green-500',
+      color: "bg-green-500",
     },
     {
-      label: 'Security Guards',
-      value: analytics.userCounts.guards,
+      label: "Security Guards",
+      value: analytics.users.totalGuards,
       icon: UserCheck,
-      color: 'bg-yellow-500',
+      color: "bg-yellow-500",
     },
   ];
 
   const visitorStats = [
     {
-      label: 'Pending Approval',
-      value: analytics.visitorCounts.pending,
-      variant: 'warning' as const,
+      label: "Pending Approval",
+      value: analytics.visitors.pending,
+      variant: "warning" as const,
     },
     {
-      label: 'Approved',
-      value: analytics.visitorCounts.approved,
-      variant: 'success' as const,
+      label: "Approved",
+      value: analytics.visitors.approved,
+      variant: "success" as const,
     },
     {
-      label: 'Rejected',
-      value: analytics.visitorCounts.rejected,
-      variant: 'danger' as const,
+      label: "Rejected",
+      value: analytics.visitors.rejected,
+      variant: "danger" as const,
     },
     {
-      label: 'Checked In',
-      value: analytics.visitorCounts.checked_in,
-      variant: 'info' as const,
+      label: "Checked In",
+      value: analytics.visitors.checkedIn,
+      variant: "info" as const,
     },
   ];
 
   const timeStats = [
-    { label: 'Today', value: analytics.visitorCounts.today },
-    { label: 'This Week', value: analytics.visitorCounts.thisWeek },
-    { label: 'This Month', value: analytics.visitorCounts.thisMonth },
+    { label: "Today", value: analytics.visitors.today },
+    { label: "This Week", value: analytics.visitors.thisWeek },
+    { label: "This Month", value: analytics.visitors.thisMonth },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
-        <p className="text-gray-600 mt-1">System-wide statistics and insights</p>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Analytics Dashboard
+        </h2>
+        <p className="text-gray-600 mt-1">
+          System-wide statistics and insights
+        </p>
       </div>
 
       {/* Main Stats */}
@@ -134,7 +200,9 @@ export default function AnalyticsDashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stat.value}
+                  </p>
                 </div>
               </div>
             </Card>
@@ -144,7 +212,9 @@ export default function AnalyticsDashboard() {
 
       {/* Visitor Status Breakdown */}
       <Card>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Visitor Status Breakdown</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Visitor Status Breakdown
+        </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {visitorStats.map((stat) => (
             <div key={stat.label} className="text-center">
@@ -179,42 +249,52 @@ export default function AnalyticsDashboard() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Recent Visitors (Last 10)
         </h3>
-        <div className="space-y-3">
-          {analytics.recentVisitors.map((visitor) => (
-            <div
-              key={visitor._id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-            >
-              <div className="flex items-center space-x-3">
-                <img
-                  src={visitor.photoUrl}
-                  alt={visitor.name}
-                  className="h-10 w-10 rounded-full object-cover"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{visitor.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {format(new Date(visitor.createdAt), 'MMM dd, HH:mm')}
-                  </p>
-                </div>
-              </div>
-              <Badge
-                variant={
-                  visitor.status === 'approved'
-                    ? 'success'
-                    : visitor.status === 'rejected'
-                    ? 'danger'
-                    : visitor.status === 'checked_in'
-                    ? 'info'
-                    : 'warning'
-                }
-                size="sm"
+
+        {analytics.recentActivity.length === 0 ? (
+          <div className="text-center py-8">
+            <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No recent visitors</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {analytics.recentActivity.map((visitor) => (
+              <div
+                key={visitor._id}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
               >
-                {visitor.status.toUpperCase().replace('_', ' ')}
-              </Badge>
-            </div>
-          ))}
-        </div>
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={visitor.photoUrl}
+                    alt={visitor.name}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {visitor.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {format(new Date(visitor.createdAt), "MMM dd, HH:mm")}
+                    </p>
+                  </div>
+                </div>
+                <Badge
+                  variant={
+                    visitor.status === "approved"
+                      ? "success"
+                      : visitor.status === "rejected"
+                      ? "danger"
+                      : visitor.status === "checked_in"
+                      ? "info"
+                      : "warning"
+                  }
+                  size="sm"
+                >
+                  {visitor.status.toUpperCase().replace("_", " ")}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );

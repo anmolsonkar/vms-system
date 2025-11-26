@@ -20,9 +20,9 @@ export const metadata = {
     "Warehouse Visitor Management",
     "RWA Management",
   ],
-  authors: [{ name: "Symbiosis Infra Pvt Ltd" }],
-  creator: "Symbiosis Infra Pvt Ltd",
-  publisher: "Symbiosis Infra Pvt Ltd",
+  authors: [{ name: "Cybersecure Digital Intelligence Private Limited" }],
+  creator: "Cybersecure Digital Intelligence Private Limited",
+  publisher: "Cybersecure Digital Intelligence Private Limited",
   robots: {
     index: false, // Set to true if you want public indexing
     follow: false,
