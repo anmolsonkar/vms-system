@@ -76,12 +76,12 @@ export default function ActiveVisitorCard({ visitor }: ActiveVisitorCardProps) {
 
             <div className="flex items-center text-gray-600">
               <Home className="h-4 w-4 mr-2" />
-              Unit {visitor.hostResidentId.unitNumber}
+              Unit {visitor.hostResidentId?.unitNumber}
             </div>
 
             <div className="flex items-center text-gray-600">
               <User className="h-4 w-4 mr-2" />
-              Host: {visitor.hostResidentId.name}
+              Host: {visitor.hostResidentId?.name}
             </div>
           </div>
 

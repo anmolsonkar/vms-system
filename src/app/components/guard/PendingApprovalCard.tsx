@@ -70,14 +70,14 @@ export default function PendingApprovalCard({
 
             <div className="flex items-center text-gray-600">
               <Home className="h-4 w-4 mr-2" />
-              Unit {visitor.hostResidentId.unitNumber}
+              Unit {visitor.hostResidentId?.unitNumber}
             </div>
           </div>
 
           <div className="pt-2 border-t border-gray-200">
             <p className="text-sm text-gray-600">
               <span className="font-medium">Visiting:</span>{" "}
-              {visitor.hostResidentId.name}
+              {visitor.hostResidentId?.name}
             </p>
             <p className="text-sm text-gray-600 mt-1">
               <span className="font-medium">Purpose:</span> {visitor.purpose}

@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import DashboardLayout from '@/app/components/layout/DashboardLayout';
-import Card from '@/app/components/shared/Card';
-import Badge from '@/app/components/shared/Badge';
-import Button from '@/app/components/shared/Button';
-import Input from '@/app/components/shared/Input';
-import LoadingSpinner from '@/app/components/shared/LoadingSpinner';
-import { ChevronLeft, ChevronRight, History, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import DashboardLayout from "@/app/components/layout/DashboardLayout";
+import Card from "@/app/components/shared/Card";
+import Badge from "@/app/components/shared/Badge";
+import Button from "@/app/components/shared/Button";
+import Input from "@/app/components/shared/Input";
+import LoadingSpinner from "@/app/components/shared/LoadingSpinner";
+import { ChevronLeft, ChevronRight, History, Calendar } from "lucide-react";
+import { format } from "date-fns";
+import axios from "axios";
 
 export default function GuardHistoryPage() {
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
 
   useEffect(() => {
     fetchHistory();
@@ -25,7 +25,7 @@ export default function GuardHistoryPage() {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/guard/visitors/history', {
+      const response = await axios.get("/api/guard/visitors/history", {
         params: { page, limit: 10, date },
       });
 
@@ -34,7 +34,7 @@ export default function GuardHistoryPage() {
         setTotalPages(response.data.data.pagination.totalPages);
       }
     } catch (error) {
-      console.error('Fetch history error:', error);
+      console.error("Fetch history error:", error);
     } finally {
       setLoading(false);
     }
@@ -42,14 +42,14 @@ export default function GuardHistoryPage() {
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'approved':
-        return 'success';
-      case 'checked_in':
-        return 'info';
-      case 'checked_out':
-        return 'default';
+      case "approved":
+        return "success";
+      case "checked_in":
+        return "info";
+      case "checked_out":
+        return "default";
       default:
-        return 'warning';
+        return "warning";
     }
   };
 
@@ -67,7 +67,9 @@ export default function GuardHistoryPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Visitor History</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Visitor History
+            </h1>
             <p className="text-gray-600 mt-1">View past visitor records</p>
           </div>
 
@@ -107,34 +109,37 @@ export default function GuardHistoryPage() {
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{visitor.name}</h3>
+                        <h3 className="font-semibold text-gray-900">
+                          {visitor.name}
+                        </h3>
                         <p className="text-sm text-gray-600">
-                          Unit {visitor.hostResidentId.unitNumber} • {visitor.hostResidentId.name}
+                          Unit {visitor.hostResidentId?.unitNumber} •{" "}
+                          {visitor.hostResidentId?.name}
                         </p>
                       </div>
-                      <Badge variant={getStatusBadgeVariant(visitor.status)} size="sm">
-                        {visitor.status.replace('_', ' ').toUpperCase()}
+                      <Badge
+                        variant={getStatusBadgeVariant(visitor.status)}
+                        size="sm"
+                      >
+                        {visitor.status.replace("_", " ").toUpperCase()}
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-600">
                       <div>
-                        <span className="font-medium">Registered:</span>{' '}
-                        {format(new Date(visitor.createdAt), 'HH:mm')}
+                        <span className="font-medium">Registered:</span>{" "}
+                        {format(new Date(visitor.createdAt), "HH:mm")}
                       </div>
                       {visitor.checkInTime && (
                         <div>
-                          <span className="font-medium">Check-in:</span>{' '}
-                          {format(new Date(visitor.checkInTime), 'HH:mm')}
+                          <span className="font-medium">Check-in:</span>{" "}
+                          {format(new Date(visitor.checkInTime), "HH:mm")}
                         </div>
                       )}
-                      {visitor.phone && (
-                        <div>
-                          <span className="font-medium">Phone:</span> {visitor.phone}
-                        </div>
-                      )}
+
                       <div>
-                        <span className="font-medium">Purpose:</span> {visitor.purpose}
+                        <span className="font-medium">Purpose:</span>{" "}
+                        {visitor.purpose}
                       </div>
                     </div>
                   </div>

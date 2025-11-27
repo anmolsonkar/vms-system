@@ -1,38 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/app/lib/db/mongoose';
-import Visitor from '@/app/lib/db/models/Visitor';
-import Resident from '@/app/lib/db/models/Resident';
-import { authMiddleware } from '@/app/lib/auth/middleware';
+import { NextRequest, NextResponse } from "next/server";
+import connectDB from "@/app/lib/db/mongoose";
+import Visitor from "@/app/lib/db/models/Visitor";
+import { authMiddleware } from "@/app/lib/auth/middleware";
 
 export async function GET(request: NextRequest) {
   try {
     // Authenticate user
-    const { user, error } = await authMiddleware(request, 'resident');
+    const { user, error } = await authMiddleware(request, "resident");
     if (error) return error;
 
     await connectDB();
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const status = searchParams.get('status');
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "20");
+    const status = searchParams.get("status");
 
-    // Get resident
-    const resident = await Resident.findOne({ userId: user!.id });
-    if (!resident) {
-      return NextResponse.json(
-        { success: false, error: 'Resident not found' },
-        { status: 404 }
-      );
-    }
+    const userId = user!.id;
+    console.log("🔍 Fetching visitor history for resident:", userId);
 
-    // Build query
+    // Build query - use user ID directly
     const query: any = {
-      hostResidentId: resident._id,
+      hostResidentId: userId,
     };
 
-    if (status && status !== 'all') {
+    if (status && status !== "all") {
       query.status = status;
     }
 
@@ -45,6 +38,8 @@ export async function GET(request: NextRequest) {
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
+
+    console.log(`✅ Found ${visitors.length} visitors (total: ${total})`);
 
     return NextResponse.json(
       {
@@ -62,9 +57,9 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Get visitor history error:', error);
+    console.error("❌ Get visitor history error:", error);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: "Internal server error" },
       { status: 500 }
     );
   }

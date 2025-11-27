@@ -161,14 +161,7 @@ export default function VisitorHistory() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
-                    {visitor.phone && (
-                      <div className="flex items-center">
-                        <User className="h-4 w-4 mr-2" />
-                        {visitor.phone}
-                      </div>
-                    )}
-
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2" />
                       {format(

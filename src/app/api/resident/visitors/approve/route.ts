@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/app/lib/db/mongoose';
 import Visitor from '@/app/lib/db/models/Visitor';
-import Resident from '@/app/lib/db/models/Resident';
 import User from '@/app/lib/db/models/User';
 import { authMiddleware } from '@/app/lib/auth/middleware';
 import { notifyGuardOfApproval } from '@/app/lib/utils/notification';
@@ -26,14 +25,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get resident
-    const resident = await Resident.findOne({ userId: user!.id });
-    if (!resident) {
-      return NextResponse.json(
-        { success: false, error: 'Resident not found' },
-        { status: 404 }
-      );
-    }
+    const userId = user!.id;
+    console.log('🔍 Resident approving visitor:', { userId, visitorId });
 
     // Get visitor
     const visitor = await Visitor.findById(visitorId);
@@ -44,10 +37,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify visitor belongs to this resident
-    if (visitor.hostResidentId.toString() !== resident._id.toString()) {
+    // Verify visitor belongs to this resident (compare with user ID directly)
+    if (visitor.hostResidentId.toString() !== userId) {
+      console.log('❌ Unauthorized:', {
+        visitorHostId: visitor.hostResidentId.toString(),
+        currentUserId: userId
+      });
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { success: false, error: 'Unauthorized - This visitor is not assigned to you' },
         { status: 403 }
       );
     }
@@ -55,16 +52,32 @@ export async function POST(request: NextRequest) {
     // Check if already processed
     if (visitor.status !== 'pending') {
       return NextResponse.json(
-        { success: false, error: 'Visitor already processed' },
+        { success: false, error: `Visitor already ${visitor.status}` },
         { status: 400 }
+      );
+    }
+
+    // Get resident details from User collection
+    const residentUser = await User.findOne({
+      _id: userId,
+      role: 'resident',
+      isActive: true
+    });
+
+    if (!residentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Resident user not found' },
+        { status: 404 }
       );
     }
 
     // Update visitor status
     visitor.status = 'approved';
-    visitor.approvedBy = user!.id as any;
+    visitor.approvedBy = userId as any;
     visitor.approvedAt = new Date();
     await visitor.save();
+
+    console.log('✅ Visitor approved successfully:', visitorId);
 
     // Get all guards at this property to notify
     const guards = await User.find({
@@ -73,24 +86,31 @@ export async function POST(request: NextRequest) {
       isActive: true,
     });
 
+    console.log(`📢 Notifying ${guards.length} guards`);
+
     // Notify all guards
     for (const guard of guards) {
-      await notifyGuardOfApproval(
-        guard._id.toString(),
-        user!.propertyId!,
-        visitor._id.toString(),
-        visitor.name,
-        resident.name
-      );
+      try {
+        await notifyGuardOfApproval(
+          guard._id.toString(),
+          user!.propertyId!,
+          visitor._id.toString(),
+          visitor.name,
+          residentUser.fullName
+        );
+      } catch (error) {
+        console.error('Guard notification error:', error);
+      }
     }
 
     // Send SMS/WhatsApp to visitor
     if (visitor.phone) {
       try {
-        await sendApprovalSMS(visitor.phone, visitor.name, resident.name);
-        await sendVisitorApprovedNotification(visitor.phone, visitor.name, resident.name);
+        await sendApprovalSMS(visitor.phone, visitor.name, residentUser.fullName);
+        await sendVisitorApprovedNotification(visitor.phone, visitor.name, residentUser.fullName);
+        console.log('✅ Notifications sent to visitor');
       } catch (error) {
-        console.error('Notification send error:', error);
+        console.error('Visitor notification error:', error);
       }
     }
 
@@ -101,12 +121,14 @@ export async function POST(request: NextRequest) {
         data: {
           visitorId: visitor._id.toString(),
           status: visitor.status,
+          visitorName: visitor.name,
+          approvedBy: residentUser.fullName,
         },
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Approve visitor error:', error);
+    console.error('❌ Approve visitor error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

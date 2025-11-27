@@ -1,11 +1,11 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IVisitor extends Document {
   propertyId: mongoose.Types.ObjectId;
   name: string;
   phone?: string;
   phoneVerified: boolean;
-  idCardType?: 'aadhaar' | 'pan' | 'driving_license' | 'passport' | 'other';
+  idCardType?: "aadhaar" | "pan" | "driving_license" | "passport" | "other";
   idCardNumber?: string;
   idCardImageUrl?: string;
   photoUrl: string;
@@ -13,7 +13,7 @@ export interface IVisitor extends Document {
   hostResidentId: mongoose.Types.ObjectId;
   vehicleNumber?: string;
   numberOfPersons: number;
-  status: 'pending' | 'approved' | 'rejected' | 'checked_in' | 'checked_out';
+  status: "pending" | "approved" | "rejected" | "checked_in" | "checked_out";
   approvedBy?: mongoose.Types.ObjectId;
   approvedAt?: Date;
   rejectedBy?: mongoose.Types.ObjectId;
@@ -38,17 +38,17 @@ const VisitorSchema = new Schema<IVisitor>(
   {
     propertyId: {
       type: Schema.Types.ObjectId,
-      ref: 'Property',
+      ref: "Property",
       required: true,
     },
     name: {
       type: String,
-      required: [true, 'Visitor name is required'],
+      required: [true, "Visitor name is required"],
       trim: true,
     },
     phone: {
       type: String,
-      match: [/^[0-9]{10}$/, 'Please enter a valid 10-digit phone number'],
+      match: [/^[0-9]{10}$/, "Please enter a valid 10-digit phone number"],
     },
     phoneVerified: {
       type: Boolean,
@@ -56,7 +56,7 @@ const VisitorSchema = new Schema<IVisitor>(
     },
     idCardType: {
       type: String,
-      enum: ['aadhaar', 'pan', 'driving_license', 'passport', 'other'],
+      enum: ["aadhaar", "pan", "driving_license", "passport", "other"],
     },
     idCardNumber: {
       type: String,
@@ -67,17 +67,17 @@ const VisitorSchema = new Schema<IVisitor>(
     },
     photoUrl: {
       type: String,
-      required: [true, 'Visitor photo is required'],
+      required: [true, "Visitor photo is required"],
     },
     purpose: {
       type: String,
-      required: [true, 'Purpose of visit is required'],
+      required: [true, "Purpose of visit is required"],
       trim: true,
     },
     hostResidentId: {
       type: Schema.Types.ObjectId,
-      ref: 'Resident',
-      required: [true, 'Host resident is required'],
+      ref: "Resident",
+      required: [true, "Host resident is required"],
     },
     vehicleNumber: {
       type: String,
@@ -91,19 +91,19 @@ const VisitorSchema = new Schema<IVisitor>(
     },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected', 'checked_in', 'checked_out'],
-      default: 'pending',
+      enum: ["pending", "approved", "rejected", "checked_in", "checked_out"],
+      default: "pending",
     },
     approvedBy: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     approvedAt: {
       type: Date,
     },
     rejectedBy: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     rejectedAt: {
       type: Date,
@@ -113,14 +113,14 @@ const VisitorSchema = new Schema<IVisitor>(
     },
     checkedInBy: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     checkInTime: {
       type: Date,
     },
     markedExitBy: {
       type: Schema.Types.ObjectId,
-      ref: 'Resident',
+      ref: "Resident",
     },
     markedExitAt: {
       type: Date,
@@ -130,7 +130,7 @@ const VisitorSchema = new Schema<IVisitor>(
     },
     checkedOutBy: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     isWalkIn: {
       type: Boolean,
@@ -138,7 +138,7 @@ const VisitorSchema = new Schema<IVisitor>(
     },
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     otp: {
       type: String,
@@ -163,6 +163,7 @@ VisitorSchema.index({ phone: 1 });
 VisitorSchema.index({ createdAt: -1 });
 VisitorSchema.index({ checkInTime: 1, status: 1 });
 
-const Visitor: Model<IVisitor> = mongoose.models.Visitor || mongoose.model<IVisitor>('Visitor', VisitorSchema);
+const Visitor: Model<IVisitor> =
+  mongoose.models.Visitor || mongoose.model<IVisitor>("Visitor", VisitorSchema);
 
 export default Visitor;

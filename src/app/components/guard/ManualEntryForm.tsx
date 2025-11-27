@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, Camera, User, Search, Check, AlertCircle } from "lucide-react";
+import { X, Camera, Check, AlertCircle } from "lucide-react";
 
 interface Resident {
   _id: string;
@@ -16,11 +16,13 @@ interface VisitorFormData {
   phone: string;
   purpose: string;
   residentId: string;
+  unitNumber: string;
   vehicleNumber: string;
   idPhoto: string | null;
+  otpVerified: boolean;
 }
 
-export default function WalkInVisitorEntry() {
+export default function ManualEntryForm() {
   const [residents, setResidents] = useState<Resident[]>([]);
   const [filteredResidents, setFilteredResidents] = useState<Resident[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,30 +31,37 @@ export default function WalkInVisitorEntry() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [showResidentSelector, setShowResidentSelector] = useState(false);
+  const [showOTPModal, setShowOTPModal] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [formData, setFormData] = useState<VisitorFormData>({
     name: "",
     phone: "",
     purpose: "",
     residentId: "",
+    unitNumber: "",
     vehicleNumber: "",
     idPhoto: null,
+    otpVerified: false,
   });
 
   const [selectedResident, setSelectedResident] = useState<Resident | null>(
     null
   );
 
-  // Fetch residents on component mount
+  // Fetch residents on mount
   useEffect(() => {
     fetchResidents();
   }, []);
 
-  // Filter residents based on search query
+  // Filter residents based on search
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setFilteredResidents(residents);
@@ -67,6 +76,21 @@ export default function WalkInVisitorEntry() {
       setFilteredResidents(filtered);
     }
   }, [searchQuery, residents]);
+
+  // OTP resend timer
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer]);
+
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   const fetchResidents = async () => {
     try {
@@ -118,14 +142,9 @@ export default function WalkInVisitorEntry() {
       const context = canvas.getContext("2d");
 
       if (context) {
-        // Set canvas dimensions to match video
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-
-        // Draw video frame to canvas
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        // Convert canvas to base64 image
         const imageData = canvas.toDataURL("image/jpeg", 0.8);
         setFormData({ ...formData, idPhoto: imageData });
         stopCamera();
@@ -139,7 +158,11 @@ export default function WalkInVisitorEntry() {
     setFormData({ ...formData, idPhoto: null });
   };
 
-  // Resident Selection Functions
+  const skipPhoto = () => {
+    setFormData({ ...formData, idPhoto: "skipped" });
+  };
+
+  // Resident Selection
   const openResidentSelector = () => {
     setShowResidentSelector(true);
     setSearchQuery("");
@@ -147,9 +170,106 @@ export default function WalkInVisitorEntry() {
 
   const selectResident = (resident: Resident) => {
     setSelectedResident(resident);
-    setFormData({ ...formData, residentId: resident._id });
+    setFormData({
+      ...formData,
+      residentId: resident._id,
+      unitNumber: resident.unitNumber,
+    });
     setShowResidentSelector(false);
     setSearchQuery("");
+  };
+
+  // OTP Functions
+  const sendOTP = async () => {
+    if (!formData.phone || formData.phone.length !== 10) {
+      setError("Please enter a valid 10-digit phone number");
+      return;
+    }
+
+    setOtpLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/visitor/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: formData.phone }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setShowOTPModal(true);
+        setResendTimer(60);
+        setSuccess("OTP sent successfully!");
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(data.error || "Failed to send OTP");
+      }
+    } catch (err) {
+      setError("Failed to send OTP. Please check your network connection.");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleOTPChange = (index: number, value: string) => {
+    if (value && !/^\d$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    setError(null);
+
+    if (value && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+
+    if (newOtp.every((digit) => digit !== "") && index === 5) {
+      verifyOTP(newOtp.join(""));
+    }
+  };
+
+  const handleOTPKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const verifyOTP = async (otpValue: string) => {
+    setOtpLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/visitor/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: formData.phone, otp: otpValue }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setFormData({ ...formData, otpVerified: true });
+        setShowOTPModal(false);
+        setSuccess("Phone number verified successfully!");
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(data.error || "Invalid OTP");
+        setOtp(["", "", "", "", "", ""]);
+        otpInputRefs.current[0]?.focus();
+      }
+    } catch (err) {
+      setError("Failed to verify OTP");
+      setOtp(["", "", "", "", "", ""]);
+      otpInputRefs.current[0]?.focus();
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    await sendOTP();
   };
 
   // Form Submission
@@ -169,13 +289,8 @@ export default function WalkInVisitorEntry() {
       return;
     }
 
-    if (!formData.idPhoto) {
-      setError("Please capture visitor ID photo");
-      return;
-    }
-
-    if (formData.phone.length !== 10) {
-      setError("Phone number must be 10 digits");
+    if (!formData.otpVerified) {
+      setError("Please verify phone number with OTP");
       return;
     }
 
@@ -186,23 +301,23 @@ export default function WalkInVisitorEntry() {
         name: formData.name,
         phone: formData.phone,
         purpose: formData.purpose,
-        residentId: formData.residentId,
+        hostResidentId: formData.residentId,
         vehicleNumber: formData.vehicleNumber || undefined,
-        idPhoto: formData.idPhoto,
-        type: "walk-in",
-        status: "pending", // Pending approval from resident
+        idCardImageUrl:
+          formData.idPhoto && formData.idPhoto !== "skipped"
+            ? formData.idPhoto
+            : undefined,
+        photoUrl:
+          formData.idPhoto && formData.idPhoto !== "skipped"
+            ? formData.idPhoto
+            : undefined,
+        isWalkIn: true,
+        phoneVerified: true,
       };
 
-      console.log("📤 Submitting visitor entry:", {
-        ...visitorData,
-        idPhoto: "[BASE64_IMAGE]",
-      });
-
-      const response = await fetch("/api/guard/visitors/create", {
+      const response = await fetch("/api/guard/manual-entry", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(visitorData),
       });
 
@@ -217,12 +332,14 @@ export default function WalkInVisitorEntry() {
           phone: "",
           purpose: "",
           residentId: "",
+          unitNumber: "",
           vehicleNumber: "",
           idPhoto: null,
+          otpVerified: false,
         });
         setSelectedResident(null);
+        setOtp(["", "", "", "", "", ""]);
 
-        // Clear success message after 5 seconds
         setTimeout(() => setSuccess(null), 5000);
       } else {
         setError(data.error || "Failed to create visitor entry");
@@ -234,13 +351,6 @@ export default function WalkInVisitorEntry() {
       setLoading(false);
     }
   };
-
-  // Cleanup camera on unmount
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -282,26 +392,48 @@ export default function WalkInVisitorEntry() {
             />
           </div>
 
-          {/* Phone Number */}
+          {/* Phone Number with OTP */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Phone Number <span className="text-red-500">*</span>
             </label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-                setFormData({ ...formData, phone: value });
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter 10-digit phone number"
-              maxLength={10}
-              required
-            />
+            <div className="flex gap-2">
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  setFormData({
+                    ...formData,
+                    phone: value,
+                    otpVerified: false,
+                  });
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="10-digit phone number"
+                maxLength={10}
+                required
+                disabled={formData.otpVerified}
+              />
+              {!formData.otpVerified ? (
+                <button
+                  type="button"
+                  onClick={sendOTP}
+                  disabled={formData.phone.length !== 10 || otpLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {otpLoading ? "Sending..." : "Send OTP"}
+                </button>
+              ) : (
+                <div className="px-4 py-2 bg-green-50 text-green-700 rounded-lg flex items-center gap-2 whitespace-nowrap">
+                  <Check className="w-5 h-5" />
+                  Verified
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Whom to Meet - Resident Selector */}
+          {/* Whom to Meet */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Whom to Meet <span className="text-red-500">*</span>
@@ -311,50 +443,54 @@ export default function WalkInVisitorEntry() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors bg-white"
             >
               {selectedResident ? (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {selectedResident.fullName}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Unit {selectedResident.unitNumber} •{" "}
-                      {selectedResident.phoneNumber}
-                    </div>
+                <div>
+                  <div className="font-medium text-gray-900">
+                    {selectedResident.fullName}
                   </div>
-                  <User className="w-5 h-5 text-blue-600" />
+                  <div className="text-sm text-gray-500">
+                    Unit {selectedResident.unitNumber} •{" "}
+                    {selectedResident.phoneNumber}
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between text-gray-400">
-                  <span>Click to select resident</span>
-                  <User className="w-5 h-5" />
-                </div>
+                <div className="text-gray-400">Click to select resident</div>
               )}
             </div>
           </div>
+
+          {/* Unit Number (Read-only) */}
+          {formData.unitNumber && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Unit Number
+              </label>
+              <input
+                type="text"
+                value={formData.unitNumber}
+                readOnly
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+              />
+            </div>
+          )}
 
           {/* Purpose of Visit */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Purpose of Visit <span className="text-red-500">*</span>
             </label>
-            <select
+            <textarea
               value={formData.purpose}
               onChange={(e) =>
                 setFormData({ ...formData, purpose: e.target.value })
               }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={3}
+              placeholder="Enter purpose of visit (e.g., Personal visit, Delivery, Business meeting)"
               required
-            >
-              <option value="">Select purpose</option>
-              <option value="personal">Personal Visit</option>
-              <option value="delivery">Delivery</option>
-              <option value="service">Service/Maintenance</option>
-              <option value="business">Business Meeting</option>
-              <option value="other">Other</option>
-            </select>
+            />
           </div>
 
-          {/* Vehicle Number (Optional) */}
+          {/* Vehicle Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Vehicle Number (Optional)
@@ -373,21 +509,43 @@ export default function WalkInVisitorEntry() {
             />
           </div>
 
-          {/* ID Photo Capture */}
+          {/* ID Photo Capture - Optional */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Visitor ID Photo <span className="text-red-500">*</span>
+              Visitor ID Photo (Optional)
             </label>
 
             {!formData.idPhoto ? (
-              <button
-                type="button"
-                onClick={startCamera}
-                className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-blue-600"
-              >
-                <Camera className="w-6 h-6" />
-                <span className="font-medium">Capture ID Photo</span>
-              </button>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-blue-600"
+                >
+                  <Camera className="w-6 h-6" />
+                  <span className="font-medium">Capture ID Photo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={skipPhoto}
+                  className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
+                >
+                  Skip Photo (Continue without photo)
+                </button>
+              </div>
+            ) : formData.idPhoto === "skipped" ? (
+              <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg">
+                <p className="text-sm text-gray-600 mb-2">
+                  Photo skipped - continuing without visitor photo
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, idPhoto: null })}
+                  className="text-sm text-blue-600 hover:text-blue-700 underline"
+                >
+                  Add Photo Instead
+                </button>
+              </div>
             ) : (
               <div className="space-y-3">
                 <div className="relative rounded-lg overflow-hidden border-2 border-green-500">
@@ -401,13 +559,22 @@ export default function WalkInVisitorEntry() {
                     Captured
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={retakePhoto}
-                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Retake Photo
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={retakePhoto}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Retake Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={skipPhoto}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Remove Photo
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -468,7 +635,6 @@ export default function WalkInVisitorEntry() {
               </div>
             </div>
 
-            {/* Hidden canvas for photo capture */}
             <canvas ref={canvasRef} className="hidden" />
           </div>
         </div>
@@ -478,7 +644,6 @@ export default function WalkInVisitorEntry() {
       {showResidentSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] flex flex-col">
-            {/* Header */}
             <div className="flex justify-between items-center p-6 border-b">
               <h3 className="text-xl font-bold text-gray-900">
                 Select Resident
@@ -491,27 +656,21 @@ export default function WalkInVisitorEntry() {
               </button>
             </div>
 
-            {/* Search */}
             <div className="p-4 border-b">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, unit, or phone..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  autoFocus
-                />
-              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, unit, or phone..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                autoFocus
+              />
             </div>
 
-            {/* Resident List */}
             <div className="flex-1 overflow-y-auto p-4">
               {filteredResidents.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <User className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No residents found</p>
+                  No residents found
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -522,25 +681,70 @@ export default function WalkInVisitorEntry() {
                       onClick={() => selectResident(resident)}
                       className="w-full p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">
-                            {resident.fullName}
-                          </div>
-                          <div className="text-sm text-gray-500 mt-1">
-                            Unit {resident.unitNumber}
-                          </div>
-                          <div className="text-sm text-gray-400 mt-1">
-                            {resident.phoneNumber} • {resident.email}
-                          </div>
-                        </div>
-                        <User className="w-5 h-5 text-gray-400" />
+                      <div className="font-medium text-gray-900">
+                        {resident.fullName}
+                      </div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        Unit {resident.unitNumber}
+                      </div>
+                      <div className="text-sm text-gray-400 mt-1">
+                        {resident.phoneNumber} • {resident.email}
                       </div>
                     </button>
                   ))}
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* OTP Verification Modal */}
+      {showOTPModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Verify OTP</h3>
+              <button
+                onClick={() => setShowOTPModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Enter the 6-digit OTP sent to <strong>{formData.phone}</strong>
+            </p>
+
+            <div className="flex justify-center space-x-3 mb-4">
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => (otpInputRefs.current[index] = el)}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOTPChange(index, e.target.value)}
+                  onKeyDown={(e) => handleOTPKeyDown(index, e)}
+                  className="w-12 h-12 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              ))}
+            </div>
+
+            {resendTimer > 0 ? (
+              <p className="text-center text-sm text-gray-500">
+                Resend OTP in <strong>{resendTimer}s</strong>
+              </p>
+            ) : (
+              <button
+                onClick={handleResendOTP}
+                className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Resend OTP
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -70,18 +70,6 @@ export default function HomePage() {
             </div>
           </Link>
         </div>
-
-        <div className="text-center mt-16">
-          <p className="text-gray-600">
-            New visitor?{" "}
-            <Link
-              href="/visitor/register"
-              className="text-blue-600 font-semibold hover:underline"
-            >
-              Register Here
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );

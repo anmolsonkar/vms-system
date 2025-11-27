@@ -1,20 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Card from "../shared/Card";
 import Button from "../shared/Button";
-import Select from "../shared/Select";
 import Input from "../shared/Input";
-import CameraCapture from "./CameraCapture";
 import OTPVerification from "./OTPVerification";
-import IDCardUpload from "./IDCardUpload";
-import { CheckCircle, AlertCircle, User } from "lucide-react";
+import { CheckCircle, AlertCircle, Camera, X } from "lucide-react";
 import axios from "axios";
 
 interface Resident {
   _id: string;
   name: string;
   unitNumber: string;
+  phoneNumber: string;
 }
 
 interface RegistrationFormProps {
@@ -26,25 +24,34 @@ export default function RegistrationForm({
 }: RegistrationFormProps) {
   const [step, setStep] = useState(1);
   const [residents, setResidents] = useState<Resident[]>([]);
-  const [usePhone, setUsePhone] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    photoUrl: "",
-    idCardType: "",
-    idCardNumber: "",
     idCardImageUrl: "",
     purpose: "",
     hostResidentId: "",
+    hostUnitNumber: "",
+    hostPhoneNumber: "",
     vehicleNumber: "",
     numberOfPersons: 1,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     fetchResidents();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
   }, []);
 
   const fetchResidents = async () => {
@@ -59,6 +66,7 @@ export default function RegistrationForm({
             _id: u.residentDetails._id,
             name: u.residentDetails.name,
             unitNumber: u.residentDetails.unitNumber,
+            phoneNumber: u.phoneNumber || "",
           }));
         setResidents(residentData);
       }
@@ -67,17 +75,62 @@ export default function RegistrationForm({
     }
   };
 
-  const handlePhotoCapture = (photoUrl: string) => {
-    setFormData({ ...formData, photoUrl });
-    setStep(2);
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: 1280, height: 720 },
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setCameraStream(stream);
+        setShowCamera(true);
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+      setError("Failed to access camera. Please check permissions.");
+    }
   };
 
-  const handleOTPVerified = () => {
-    setStep(3);
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    setShowCamera(false);
   };
 
-  const handleIDCardUpload = (url: string) => {
-    setFormData({ ...formData, idCardImageUrl: url });
+  const captureIDCard = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext("2d");
+
+      if (context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL("image/jpeg", 0.8);
+        setFormData({ ...formData, idCardImageUrl: imageData });
+        stopCamera();
+      }
+    }
+  };
+
+  const retakeIDCard = () => {
+    setFormData({ ...formData, idCardImageUrl: "" });
+  };
+
+  const handleResidentSelect = (residentId: string) => {
+    const resident = residents.find((r) => r._id === residentId);
+    if (resident) {
+      setFormData({
+        ...formData,
+        hostResidentId: residentId,
+        hostUnitNumber: resident.unitNumber,
+        hostPhoneNumber: resident.phoneNumber,
+      });
+    }
   };
 
   const sendOTP = async () => {
@@ -93,12 +146,16 @@ export default function RegistrationForm({
       await axios.post("/api/visitor/send-otp", {
         phone: formData.phone,
       });
-      setStep(2.5); // OTP verification step
+      setStep(1.5);
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to send OTP");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOTPVerified = () => {
+    setStep(2);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,33 +164,27 @@ export default function RegistrationForm({
     setLoading(true);
 
     try {
-      // Validate
-      if (!formData.photoUrl) {
-        setError("Please capture your photo");
+      if (!formData.idCardImageUrl) {
+        setError("Please capture ID card photo");
         setLoading(false);
         return;
       }
 
-      if (usePhone && !formData.phone) {
+      if (!formData.phone) {
         setError("Please provide phone number");
         setLoading(false);
         return;
       }
 
-      if (!usePhone && !formData.idCardImageUrl) {
-        setError("Please upload ID card");
-        setLoading(false);
-        return;
-      }
-
-      // Submit
       const response = await axios.post("/api/visitor/register", {
         propertyId,
-        ...formData,
-        phone: usePhone ? formData.phone : undefined,
-        idCardType: !usePhone ? formData.idCardType : undefined,
-        idCardNumber: !usePhone ? formData.idCardNumber : undefined,
-        idCardImageUrl: !usePhone ? formData.idCardImageUrl : undefined,
+        name: formData.name,
+        phone: formData.phone,
+        idCardImageUrl: formData.idCardImageUrl,
+        purpose: formData.purpose,
+        hostResidentId: formData.hostResidentId,
+        vehicleNumber: formData.vehicleNumber,
+        numberOfPersons: formData.numberOfPersons,
       });
 
       if (response.data.success) {
@@ -172,7 +223,7 @@ export default function RegistrationForm({
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Visitor Registration
           </h2>
-          <p className="text-gray-600">Step {step > 2 ? 3 : step} of 3</p>
+          <p className="text-gray-600">Step {step > 1 ? 2 : 1} of 2</p>
         </div>
 
         {error && (
@@ -182,30 +233,18 @@ export default function RegistrationForm({
           </div>
         )}
 
-        {/* Step 1: Photo Capture */}
+        {/* Step 1: Phone & Name */}
         {step === 1 && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Step 1: Capture Your Photo
-              </h3>
-              <CameraCapture onCapture={handlePhotoCapture} />
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Basic Info & Verification Method */}
-        {step === 2 && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              usePhone ? sendOTP() : setStep(3);
+              sendOTP();
             }}
             className="space-y-6"
           >
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Step 2: Enter Your Details
+                Step 1: Enter Your Details
               </h3>
 
               <Input
@@ -219,96 +258,31 @@ export default function RegistrationForm({
                 className="mb-4"
               />
 
-              {/* Verification Method Toggle */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Verification Method <span className="text-red-500">*</span>
-                </label>
-                <div className="flex space-x-4">
-                  <button
-                    type="button"
-                    onClick={() => setUsePhone(true)}
-                    className={`flex-1 px-4 py-3 border-2 rounded-lg transition-colors ${
-                      usePhone
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-gray-300 text-gray-700"
-                    }`}
-                  >
-                    Phone Number (OTP)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUsePhone(false)}
-                    className={`flex-1 px-4 py-3 border-2 rounded-lg transition-colors ${
-                      !usePhone
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-gray-300 text-gray-700"
-                    }`}
-                  >
-                    ID Card
-                  </button>
-                </div>
-              </div>
-
-              {usePhone ? (
-                <Input
-                  label="Phone Number"
-                  type="tel"
-                  required
-                  maxLength={10}
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      phone: e.target.value.replace(/\D/g, ""),
-                    })
-                  }
-                  placeholder="10-digit mobile number"
-                  helperText="You will receive an OTP for verification"
-                />
-              ) : (
-                <>
-                  <Select
-                    label="ID Card Type"
-                    required
-                    options={[
-                      { value: "", label: "Select ID Type" },
-                      { value: "aadhaar", label: "Aadhaar Card" },
-                      { value: "pan", label: "PAN Card" },
-                      { value: "driving_license", label: "Driving License" },
-                      { value: "passport", label: "Passport" },
-                      { value: "other", label: "Other" },
-                    ]}
-                    value={formData.idCardType}
-                    onChange={(e) =>
-                      setFormData({ ...formData, idCardType: e.target.value })
-                    }
-                    className="mb-4"
-                  />
-
-                  <Input
-                    label="ID Card Number (Optional)"
-                    value={formData.idCardNumber}
-                    onChange={(e) =>
-                      setFormData({ ...formData, idCardNumber: e.target.value })
-                    }
-                    placeholder="Enter ID card number"
-                    className="mb-4"
-                  />
-
-                  <IDCardUpload onUpload={handleIDCardUpload} />
-                </>
-              )}
+              <Input
+                label="Phone Number"
+                type="tel"
+                required
+                maxLength={10}
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    phone: e.target.value.replace(/\D/g, ""),
+                  })
+                }
+                placeholder="10-digit mobile number"
+                helperText="You will receive an OTP for verification"
+              />
             </div>
 
             <Button type="submit" fullWidth size="lg" loading={loading}>
-              {usePhone ? "Send OTP" : "Continue"}
+              Send OTP
             </Button>
           </form>
         )}
 
-        {/* Step 2.5: OTP Verification */}
-        {step === 2.5 && (
+        {/* Step 1.5: OTP Verification */}
+        {step === 1.5 && (
           <div>
             <OTPVerification
               phone={formData.phone}
@@ -317,15 +291,51 @@ export default function RegistrationForm({
           </div>
         )}
 
-        {/* Step 3: Visit Details */}
-        {step === 3 && (
+        {/* Step 2: Visit Details */}
+        {step === 2 && (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Step 3: Visit Details
+                Step 2: Visit Details
               </h3>
 
               <div className="space-y-4">
+                {/* ID Card Capture */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ID Card Photo <span className="text-red-500">*</span>
+                  </label>
+
+                  {!formData.idCardImageUrl ? (
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-blue-600"
+                    >
+                      <Camera className="w-6 h-6" />
+                      <span className="font-medium">Capture ID Card</span>
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="relative rounded-lg overflow-hidden border-2 border-green-500">
+                        <img
+                          src={formData.idCardImageUrl}
+                          alt="Captured ID"
+                          className="w-full h-auto"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={retakeIDCard}
+                        className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Retake Photo
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Purpose */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Purpose of Visit <span className="text-red-500">*</span>
@@ -338,26 +348,41 @@ export default function RegistrationForm({
                     }
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows={3}
-                    placeholder="Enter purpose of visit"
+                    placeholder="Enter purpose of visit (e.g., Personal visit, Delivery, Business meeting)"
                   />
                 </div>
 
-                <Select
-                  label="Whom to Meet"
-                  required
-                  options={[
-                    { value: "", label: "Select Resident" },
-                    ...residents.map((r) => ({
-                      value: r._id,
-                      label: `${r.name} - Unit ${r.unitNumber}`,
-                    })),
-                  ]}
-                  value={formData.hostResidentId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, hostResidentId: e.target.value })
-                  }
-                />
+                {/* Resident Select */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Whom to Meet <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.hostResidentId}
+                    onChange={(e) => handleResidentSelect(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select Resident</option>
+                    {residents.map((r) => (
+                      <option key={r._id} value={r._id}>
+                        {r.name} - Unit {r.unitNumber} - {r.phoneNumber}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
+                {/* Unit Number (Read-only) */}
+                {formData.hostUnitNumber && (
+                  <Input
+                    label="Unit Number"
+                    value={formData.hostUnitNumber}
+                    readOnly
+                    className="bg-gray-50"
+                  />
+                )}
+
+                {/* Vehicle Number */}
                 <Input
                   label="Vehicle Number (Optional)"
                   value={formData.vehicleNumber}
@@ -370,6 +395,7 @@ export default function RegistrationForm({
                   placeholder="e.g., DL01AB1234"
                 />
 
+                {/* Number of Persons */}
                 <Input
                   label="Number of Persons"
                   type="number"
@@ -391,6 +417,56 @@ export default function RegistrationForm({
           </form>
         )}
       </Card>
+
+      {/* Camera Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                Capture ID Card Photo
+              </h3>
+              <button
+                onClick={stopCamera}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="relative rounded-lg overflow-hidden bg-black">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-auto"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={captureIDCard}
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Camera className="w-5 h-5" />
+                  Capture Photo
+                </button>
+              </div>
+            </div>
+
+            <canvas ref={canvasRef} className="hidden" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
