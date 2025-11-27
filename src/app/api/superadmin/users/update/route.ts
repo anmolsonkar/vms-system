@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongoose";
 import User from "@/app/lib/db/models/User";
-import Resident from "@/app/lib/db/models/Resident";
 import bcrypt from "bcryptjs";
 import { authMiddleware } from "@/app/lib/auth/middleware";
 
@@ -40,19 +39,23 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Build update object for User
+    // Build update object
     const userUpdateData: any = {};
 
     // Update email if changed
     if (email && email !== existingUser.email) {
-      // Check if new email already exists
-      const emailExists = await User.findOne({ email, _id: { $ne: userId } });
+      const emailExists = await User.findOne({
+        email,
+        _id: { $ne: userId },
+      });
+
       if (emailExists) {
         return NextResponse.json(
           { success: false, error: "Email already exists" },
           { status: 400 }
         );
       }
+
       userUpdateData.email = email.toLowerCase();
     }
 
@@ -67,22 +70,20 @@ export async function PUT(request: NextRequest) {
       userUpdateData.password = await bcrypt.hash(password, 10);
     }
 
-    // Update fullName if provided
+    // Update profile fields
     if (fullName !== undefined) {
       userUpdateData.fullName = fullName;
     }
 
-    // Update unitNumber if provided (for User model)
     if (unitNumber !== undefined) {
       userUpdateData.unitNumber = unitNumber;
     }
 
-    // Update phoneNumber if provided (for User model)
     if (phoneNumber !== undefined) {
       userUpdateData.phoneNumber = phoneNumber;
     }
 
-    // Update active status if provided
+    // Update active status
     if (typeof isActive !== "undefined") {
       userUpdateData.isActive = isActive;
     }
@@ -93,26 +94,6 @@ export async function PUT(request: NextRequest) {
       { $set: userUpdateData },
       { new: true }
     ).select("-password");
-
-    // If resident, update resident info as well
-    if (existingUser.role === "resident") {
-      const residentUpdateData: any = {};
-
-      if (fullName) residentUpdateData.name = fullName;
-      if (unitNumber) residentUpdateData.unitNumber = unitNumber;
-      if (phoneNumber) residentUpdateData.phone = phoneNumber;
-      if (email) residentUpdateData.email = email.toLowerCase();
-      if (typeof isActive !== "undefined")
-        residentUpdateData.isActive = isActive;
-
-      if (Object.keys(residentUpdateData).length > 0) {
-        await Resident.findOneAndUpdate(
-          { userId: userId },
-          { $set: residentUpdateData },
-          { new: true }
-        );
-      }
-    }
 
     return NextResponse.json(
       {

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongoose";
 import User from "@/app/lib/db/models/User";
-import Property from "@/app/lib/db/models/Property"; // ✅ Import Property model
-import Resident from "@/app/lib/db/models/Resident";
 import { authMiddleware } from "@/app/lib/auth/middleware";
 
 export async function GET(request: NextRequest) {
@@ -34,7 +32,7 @@ export async function GET(request: NextRequest) {
     // Get total count
     const total = await User.countDocuments(query);
 
-    // Get users with pagination and populate
+    // Get users with pagination
     const users = await User.find(query)
       .select("-password")
       .populate("propertyId", "name type")
@@ -43,40 +41,7 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean();
 
-    // If role is resident, also get resident details
-    if (role === "resident") {
-      const usersWithDetails = await Promise.all(
-        users.map(async (u) => {
-          const resident = await Resident.findOne({ userId: u._id }).lean();
-          return {
-            ...u,
-            residentDetails: resident,
-            // Also add fields directly to user object for easier access
-            fullName: resident?.name || u.fullName,
-            unitNumber: resident?.unitNumber || u.unitNumber,
-            phoneNumber: resident?.phone || u.phoneNumber,
-          };
-        })
-      );
-
-      return NextResponse.json(
-        {
-          success: true,
-          data: {
-            users: usersWithDetails,
-            pagination: {
-              total,
-              page,
-              limit,
-              totalPages: Math.ceil(total / limit),
-            },
-          },
-        },
-        { status: 200 }
-      );
-    }
-
-    // For non-resident roles, return users as-is
+    // Return users
     return NextResponse.json(
       {
         success: true,

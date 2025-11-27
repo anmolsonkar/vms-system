@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongoose";
 import Visitor from "@/app/lib/db/models/Visitor";
@@ -16,7 +18,6 @@ export async function GET(request: NextRequest) {
       propertyId: user!.propertyId,
       status: "pending",
     })
-      .populate("hostResidentId", "name unitNumber phone")
       .sort({ createdAt: -1 })
       .lean();
 

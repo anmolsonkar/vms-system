@@ -1,7 +1,8 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongoose";
 import Visitor from "@/app/lib/db/models/Visitor";
-import Resident from "@/app/lib/db/models/Resident";
 import { authMiddleware } from "@/app/lib/auth/middleware";
 
 export async function GET(request: NextRequest) {
@@ -17,7 +18,6 @@ export async function GET(request: NextRequest) {
       propertyId: user!.propertyId,
       status: "approved",
     })
-      .populate("hostResidentId", "name unitNumber phone")
       .sort({ approvedAt: -1 })
       .lean();
 
