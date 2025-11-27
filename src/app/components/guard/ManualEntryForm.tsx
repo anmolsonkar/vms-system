@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Camera, User, Search, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import { X, Camera, User, Search, Check, AlertCircle } from "lucide-react";
 
 interface Resident {
   _id: string;
@@ -23,7 +23,7 @@ interface VisitorFormData {
 export default function WalkInVisitorEntry() {
   const [residents, setResidents] = useState<Resident[]>([]);
   const [filteredResidents, setFilteredResidents] = useState<Resident[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -35,15 +35,17 @@ export default function WalkInVisitorEntry() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [formData, setFormData] = useState<VisitorFormData>({
-    name: '',
-    phone: '',
-    purpose: '',
-    residentId: '',
-    vehicleNumber: '',
+    name: "",
+    phone: "",
+    purpose: "",
+    residentId: "",
+    vehicleNumber: "",
     idPhoto: null,
   });
 
-  const [selectedResident, setSelectedResident] = useState<Resident | null>(null);
+  const [selectedResident, setSelectedResident] = useState<Resident | null>(
+    null
+  );
 
   // Fetch residents on component mount
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function WalkInVisitorEntry() {
 
   // Filter residents based on search query
   useEffect(() => {
-    if (searchQuery.trim() === '') {
+    if (searchQuery.trim() === "") {
       setFilteredResidents(residents);
     } else {
       const query = searchQuery.toLowerCase();
@@ -68,18 +70,18 @@ export default function WalkInVisitorEntry() {
 
   const fetchResidents = async () => {
     try {
-      const response = await fetch('/api/superadmin/users/list?role=resident');
+      const response = await fetch("/api/guard/residents/list");
       const data = await response.json();
 
       if (data.success) {
-        setResidents(data.data.users || []);
-        setFilteredResidents(data.data.users || []);
+        setResidents(data.data.residents || []);
+        setFilteredResidents(data.data.residents || []);
       } else {
-        setError('Failed to load residents');
+        setError("Failed to load residents");
       }
     } catch (err) {
-      console.error('Failed to fetch residents:', err);
-      setError('Failed to load residents');
+      console.error("Failed to fetch residents:", err);
+      setError("Failed to load residents");
     }
   };
 
@@ -87,17 +89,17 @@ export default function WalkInVisitorEntry() {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 1280, height: 720 },
+        video: { facingMode: "user", width: 1280, height: 720 },
       });
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setCameraStream(stream);
         setShowCamera(true);
       }
     } catch (err) {
-      console.error('Camera error:', err);
-      setError('Failed to access camera. Please check permissions.');
+      console.error("Camera error:", err);
+      setError("Failed to access camera. Please check permissions.");
     }
   };
 
@@ -113,7 +115,7 @@ export default function WalkInVisitorEntry() {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
+      const context = canvas.getContext("2d");
 
       if (context) {
         // Set canvas dimensions to match video
@@ -124,10 +126,10 @@ export default function WalkInVisitorEntry() {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         // Convert canvas to base64 image
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        const imageData = canvas.toDataURL("image/jpeg", 0.8);
         setFormData({ ...formData, idPhoto: imageData });
         stopCamera();
-        setSuccess('ID photo captured successfully!');
+        setSuccess("ID photo captured successfully!");
         setTimeout(() => setSuccess(null), 3000);
       }
     }
@@ -140,14 +142,14 @@ export default function WalkInVisitorEntry() {
   // Resident Selection Functions
   const openResidentSelector = () => {
     setShowResidentSelector(true);
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
   const selectResident = (resident: Resident) => {
     setSelectedResident(resident);
     setFormData({ ...formData, residentId: resident._id });
     setShowResidentSelector(false);
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
   // Form Submission
@@ -157,18 +159,23 @@ export default function WalkInVisitorEntry() {
     setSuccess(null);
 
     // Validation
-    if (!formData.name || !formData.phone || !formData.purpose || !formData.residentId) {
-      setError('Please fill in all required fields');
+    if (
+      !formData.name ||
+      !formData.phone ||
+      !formData.purpose ||
+      !formData.residentId
+    ) {
+      setError("Please fill in all required fields");
       return;
     }
 
     if (!formData.idPhoto) {
-      setError('Please capture visitor ID photo');
+      setError("Please capture visitor ID photo");
       return;
     }
 
     if (formData.phone.length !== 10) {
-      setError('Phone number must be 10 digits');
+      setError("Phone number must be 10 digits");
       return;
     }
 
@@ -182,16 +189,19 @@ export default function WalkInVisitorEntry() {
         residentId: formData.residentId,
         vehicleNumber: formData.vehicleNumber || undefined,
         idPhoto: formData.idPhoto,
-        type: 'walk-in',
-        status: 'pending', // Pending approval from resident
+        type: "walk-in",
+        status: "pending", // Pending approval from resident
       };
 
-      console.log('📤 Submitting visitor entry:', { ...visitorData, idPhoto: '[BASE64_IMAGE]' });
+      console.log("📤 Submitting visitor entry:", {
+        ...visitorData,
+        idPhoto: "[BASE64_IMAGE]",
+      });
 
-      const response = await fetch('/api/guard/visitors/create', {
-        method: 'POST',
+      const response = await fetch("/api/guard/visitors/create", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(visitorData),
       });
@@ -199,15 +209,15 @@ export default function WalkInVisitorEntry() {
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('Visitor entry created! Approval request sent to resident.');
-        
+        setSuccess("Visitor entry created! Approval request sent to resident.");
+
         // Reset form
         setFormData({
-          name: '',
-          phone: '',
-          purpose: '',
-          residentId: '',
-          vehicleNumber: '',
+          name: "",
+          phone: "",
+          purpose: "",
+          residentId: "",
+          vehicleNumber: "",
           idPhoto: null,
         });
         setSelectedResident(null);
@@ -215,11 +225,11 @@ export default function WalkInVisitorEntry() {
         // Clear success message after 5 seconds
         setTimeout(() => setSuccess(null), 5000);
       } else {
-        setError(data.error || 'Failed to create visitor entry');
+        setError(data.error || "Failed to create visitor entry");
       }
     } catch (err) {
-      console.error('Submission error:', err);
-      setError('Failed to create visitor entry');
+      console.error("Submission error:", err);
+      setError("Failed to create visitor entry");
     } finally {
       setLoading(false);
     }
@@ -235,7 +245,9 @@ export default function WalkInVisitorEntry() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Walk-in Visitor Entry</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          Walk-in Visitor Entry
+        </h2>
 
         {/* Alerts */}
         {error && (
@@ -261,7 +273,9 @@ export default function WalkInVisitorEntry() {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter visitor name"
               required
@@ -277,7 +291,7 @@ export default function WalkInVisitorEntry() {
               type="tel"
               value={formData.phone}
               onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                const value = e.target.value.replace(/\D/g, "").slice(0, 10);
                 setFormData({ ...formData, phone: value });
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -299,9 +313,12 @@ export default function WalkInVisitorEntry() {
               {selectedResident ? (
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-gray-900">{selectedResident.fullName}</div>
+                    <div className="font-medium text-gray-900">
+                      {selectedResident.fullName}
+                    </div>
                     <div className="text-sm text-gray-500">
-                      Unit {selectedResident.unitNumber} • {selectedResident.phoneNumber}
+                      Unit {selectedResident.unitNumber} •{" "}
+                      {selectedResident.phoneNumber}
                     </div>
                   </div>
                   <User className="w-5 h-5 text-blue-600" />
@@ -322,7 +339,9 @@ export default function WalkInVisitorEntry() {
             </label>
             <select
               value={formData.purpose}
-              onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, purpose: e.target.value })
+              }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
@@ -344,7 +363,10 @@ export default function WalkInVisitorEntry() {
               type="text"
               value={formData.vehicleNumber}
               onChange={(e) =>
-                setFormData({ ...formData, vehicleNumber: e.target.value.toUpperCase() })
+                setFormData({
+                  ...formData,
+                  vehicleNumber: e.target.value.toUpperCase(),
+                })
               }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., DL01AB1234"
@@ -396,7 +418,7 @@ export default function WalkInVisitorEntry() {
             disabled={loading}
             className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg"
           >
-            {loading ? 'Sending Request...' : 'Send Approval Request'}
+            {loading ? "Sending Request..." : "Send Approval Request"}
           </button>
         </form>
       </div>
@@ -406,7 +428,9 @@ export default function WalkInVisitorEntry() {
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Capture ID Photo</h3>
+              <h3 className="text-xl font-bold text-gray-900">
+                Capture ID Photo
+              </h3>
               <button
                 onClick={stopCamera}
                 className="text-gray-400 hover:text-gray-600"
@@ -452,11 +476,13 @@ export default function WalkInVisitorEntry() {
 
       {/* Resident Selector Modal */}
       {showResidentSelector && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] flex flex-col">
             {/* Header */}
             <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-bold text-gray-900">Select Resident</h3>
+              <h3 className="text-xl font-bold text-gray-900">
+                Select Resident
+              </h3>
               <button
                 onClick={() => setShowResidentSelector(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -498,7 +524,9 @@ export default function WalkInVisitorEntry() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-medium text-gray-900">{resident.fullName}</div>
+                          <div className="font-medium text-gray-900">
+                            {resident.fullName}
+                          </div>
                           <div className="text-sm text-gray-500 mt-1">
                             Unit {resident.unitNumber}
                           </div>

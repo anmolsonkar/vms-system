@@ -26,6 +26,7 @@ export const ROLE_PERMISSIONS = {
     'check_in_visitors',
     'view_active_visitors',
     'create_manual_entry',
+    'send_approval_request',
     'view_notifications',
   ],
 };

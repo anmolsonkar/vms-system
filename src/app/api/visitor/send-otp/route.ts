@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/app/lib/db/mongoose';
-import Visitor from '@/app/lib/db/models/Visitor';
-import { generateOTP, getOTPExpiry } from '@/app/lib/utils/otp';
-import { sendOTPSMS } from '@/app/lib/utils/sms';
+import { NextRequest, NextResponse } from "next/server";
+import connectDB from "@/app/lib/db/mongoose";
+import Visitor from "@/app/lib/db/models/Visitor";
+import { generateOTP, getOTPExpiry } from "@/app/lib/utils/otp";
+import { sendOTPSMS } from "@/app/lib/utils/sms";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     // Validate phone number
     if (!phone || !/^[0-9]{10}$/.test(phone)) {
       return NextResponse.json(
-        { success: false, error: 'Invalid phone number' },
+        { success: false, error: "Invalid phone number" },
         { status: 400 }
       );
     }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
       if (!visitor) {
         return NextResponse.json(
-          { success: false, error: 'Visitor not found' },
+          { success: false, error: "Visitor not found" },
           { status: 404 }
         );
       }
@@ -48,30 +48,30 @@ export async function POST(request: NextRequest) {
 
     if (!smsSent) {
       return NextResponse.json(
-        { success: false, error: 'Failed to send OTP. Please try again.' },
+        { success: false, error: "Failed to send OTP. Please try again." },
         { status: 500 }
       );
     }
 
     // For development - log OTP (remove in production)
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       console.log(`OTP for ${phone}: ${otp}`);
     }
 
     return NextResponse.json(
       {
         success: true,
-        message: 'OTP sent successfully',
+        message: "OTP sent successfully",
         data: {
-          expiresIn: '10 minutes',
+          expiresIn: "10 minutes",
         },
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Send OTP error:', error);
+    console.error("Send OTP error:", error);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: "Internal server error" },
       { status: 500 }
     );
   }
