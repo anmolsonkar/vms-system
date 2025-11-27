@@ -1,26 +1,28 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Card from '../shared/Card';
-import Badge from '../shared/Badge';
-import Button from '../shared/Button';
-import Modal from '../shared/Modal';
-import Input from '../shared/Input';
-import Select from '../shared/Select';
-import LoadingSpinner from '../shared/LoadingSpinner';
-import { Building, QrCode, Plus, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import Card from "../shared/Card";
+import Badge from "../shared/Badge";
+import Button from "../shared/Button";
+import Modal from "../shared/Modal";
+import Input from "../shared/Input";
+import Select from "../shared/Select";
+import LoadingSpinner from "../shared/LoadingSpinner";
+import { Building, QrCode, Plus, Calendar } from "lucide-react";
+import { format } from "date-fns";
+import axios from "axios";
 
 interface Property {
   _id: string;
   name: string;
   type: string;
-  address: string;
-  city: string;
-  state: string;
-  pincode: string;
-  qrCodeUrl: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+  qrCode?: string;
   createdAt: string;
 }
 
@@ -29,16 +31,17 @@ export default function PropertyManager() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [selectedQR, setSelectedQR] = useState('');
+  const [selectedQR, setSelectedQR] = useState("");
   const [formData, setFormData] = useState({
-    name: '',
-    type: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
+    name: "",
+    type: "",
+    street: "",
+    city: "",
+    state: "",
+    pincode: "",
   });
   const [createLoading, setCreateLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchProperties();
@@ -47,12 +50,12 @@ export default function PropertyManager() {
   const fetchProperties = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/superadmin/properties/list');
+      const response = await axios.get("/api/superadmin/properties/list");
       if (response.data.success) {
         setProperties(response.data.data.properties);
       }
     } catch (error) {
-      console.error('Fetch properties error:', error);
+      console.error("Fetch properties error:", error);
     } finally {
       setLoading(false);
     }
@@ -60,46 +63,68 @@ export default function PropertyManager() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setCreateLoading(true);
 
     try {
-      const response = await axios.post('/api/superadmin/properties/create', formData);
+      // Simple property data structure
+      const propertyData = {
+        name: formData.name,
+        type: formData.type,
+        address: {
+          street: formData.street,
+          city: formData.city,
+          state: formData.state,
+          pincode: formData.pincode,
+          country: "India",
+        },
+      };
+
+      console.log("Sending property data:", propertyData);
+
+      const response = await axios.post(
+        "/api/superadmin/properties/create",
+        propertyData
+      );
+
+      console.log("Response:", response.data);
 
       if (response.data.success) {
+        alert("Property created successfully!");
         setShowCreateModal(false);
         setFormData({
-          name: '',
-          type: '',
-          address: '',
-          city: '',
-          state: '',
-          pincode: '',
+          name: "",
+          type: "",
+          street: "",
+          city: "",
+          state: "",
+          pincode: "",
         });
         fetchProperties();
       }
-    } catch (error) {
-      console.error('Create property error:', error);
-      alert('Failed to create property');
+    } catch (error: any) {
+      console.error("Create property error:", error.response?.data);
+      setError(error.response?.data?.error || "Failed to create property");
     } finally {
       setCreateLoading(false);
     }
   };
 
-  const handleViewQR = (qrCodeUrl: string) => {
-    setSelectedQR(qrCodeUrl);
+  const handleViewQR = (qrCode: string) => {
+    setSelectedQR(qrCode);
     setShowQRModal(true);
   };
 
   const getTypeBadgeVariant = (type: string) => {
     switch (type) {
-      case 'apartment':
-        return 'info';
-      case 'warehouse':
-        return 'warning';
-      case 'rwa':
-        return 'success';
+      case "apartment":
+        return "info";
+      case "warehouse":
+        return "warning";
+      case "rwa":
+        return "success";
       default:
-        return 'default';
+        return "default";
     }
   };
 
@@ -126,7 +151,13 @@ export default function PropertyManager() {
         <Card>
           <div className="text-center py-12">
             <Building className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No properties yet</p>
+            <p className="text-gray-500">
+              No properties yet. Create your first property!
+            </p>
+            <Button onClick={() => setShowCreateModal(true)} className="mt-4">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Property
+            </Button>
           </div>
         </Card>
       ) : (
@@ -139,26 +170,36 @@ export default function PropertyManager() {
                     <h3 className="text-lg font-semibold text-gray-900">
                       {property.name}
                     </h3>
-                    <Badge variant={getTypeBadgeVariant(property.type)} size="sm" className="mt-2">
+                    <Badge
+                      variant={getTypeBadgeVariant(property.type)}
+                      size="sm"
+                      className="mt-2"
+                    >
                       {property.type.toUpperCase()}
                     </Badge>
                   </div>
-                  <button
-                    onClick={() => handleViewQR(property.qrCodeUrl)}
-                    className="text-blue-600 hover:text-blue-700"
-                  >
-                    <QrCode className="h-6 w-6" />
-                  </button>
+                  {property.qrCode && (
+                    <button
+                      onClick={() => handleViewQR(property.qrCode!)}
+                      className="text-blue-600 hover:text-blue-700"
+                      title="View QR Code"
+                    >
+                      <QrCode className="h-6 w-6" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="text-sm text-gray-600 space-y-1">
-                  <p>{property.address}</p>
-                  <p>{property.city}, {property.state} - {property.pincode}</p>
+                  <p>{property.address.street}</p>
+                  <p>
+                    {property.address.city}, {property.address.state} -{" "}
+                    {property.address.pincode}
+                  </p>
                 </div>
 
                 <div className="pt-3 border-t border-gray-200 flex items-center text-xs text-gray-500">
                   <Calendar className="h-4 w-4 mr-1" />
-                  Created {format(new Date(property.createdAt), 'MMM dd, yyyy')}
+                  Created {format(new Date(property.createdAt), "MMM dd, yyyy")}
                 </div>
               </div>
             </Card>
@@ -169,11 +210,20 @@ export default function PropertyManager() {
       {/* Create Property Modal */}
       <Modal
         isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => {
+          setShowCreateModal(false);
+          setError("");
+        }}
         title="Create New Property"
         size="lg"
       >
         <form onSubmit={handleCreate} className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              ❌ {error}
+            </div>
+          )}
+
           <Input
             label="Property Name"
             required
@@ -186,21 +236,24 @@ export default function PropertyManager() {
             label="Property Type"
             required
             options={[
-              { value: '', label: 'Select Type' },
-              { value: 'apartment', label: 'Apartment Complex' },
-              { value: 'warehouse', label: 'Warehouse' },
-              { value: 'rwa', label: 'RWA/Society' },
+              { value: "", label: "Select Type" },
+              { value: "apartment", label: "Apartment Complex" },
+              { value: "warehouse", label: "Warehouse" },
+              { value: "rwa", label: "RWA/Society" },
+              { value: "office", label: "Office Building" },
             ]}
             value={formData.type}
             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
           />
 
           <Input
-            label="Address"
+            label="Street Address"
             required
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            placeholder="Street address"
+            value={formData.street}
+            onChange={(e) =>
+              setFormData({ ...formData, street: e.target.value })
+            }
+            placeholder="Complete street address"
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -208,7 +261,9 @@ export default function PropertyManager() {
               label="City"
               required
               value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, city: e.target.value })
+              }
               placeholder="City"
             />
 
@@ -216,7 +271,9 @@ export default function PropertyManager() {
               label="State"
               required
               value={formData.state}
-              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, state: e.target.value })
+              }
               placeholder="State"
             />
           </div>
@@ -226,7 +283,12 @@ export default function PropertyManager() {
             required
             maxLength={6}
             value={formData.pincode}
-            onChange={(e) => setFormData({ ...formData, pincode: e.target.value.replace(/\D/g, '') })}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                pincode: e.target.value.replace(/\D/g, ""),
+              })
+            }
             placeholder="6-digit pincode"
           />
 
@@ -234,7 +296,10 @@ export default function PropertyManager() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setShowCreateModal(false)}
+              onClick={() => {
+                setShowCreateModal(false);
+                setError("");
+              }}
               fullWidth
             >
               Cancel
@@ -254,19 +319,24 @@ export default function PropertyManager() {
         size="md"
       >
         <div className="text-center space-y-4">
-          <img
-            src={selectedQR}
-            alt="QR Code"
-            className="mx-auto border-2 border-gray-200 rounded-lg"
-          />
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2">
+              Visitor Registration URL:
+            </p>
+            <a
+              href={selectedQR}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline text-sm break-all"
+            >
+              {selectedQR}
+            </a>
+          </div>
           <p className="text-sm text-gray-600">
-            Visitors can scan this QR code to register their visit
+            Share this URL or QR code with visitors to register their visit
           </p>
-          <Button
-            onClick={() => window.open(selectedQR, '_blank')}
-            fullWidth
-          >
-            Download QR Code
+          <Button onClick={() => window.open(selectedQR, "_blank")} fullWidth>
+            Open URL
           </Button>
         </div>
       </Modal>

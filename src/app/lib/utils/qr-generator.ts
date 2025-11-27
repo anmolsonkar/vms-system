@@ -1,153 +1,65 @@
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
+import QRCode from 'qrcode';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './public/uploads';
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '5242880'); // 5MB default
 
-export interface UploadResult {
+export interface QRCodeResult {
   success: boolean;
-  url?: string;
-  filename?: string;
+  qrCodeUrl?: string;
+  qrCodeDataUrl?: string;
   error?: string;
 }
 
-export async function uploadFile(
-  file: File,
-  folder: 'photos' | 'id-cards' | 'documents'
-): Promise<UploadResult> {
+/**
+ * Generate a QR code image for property visitor registration
+ */
+export async function generatePropertyQRCode(
+  propertyId: string,
+  propertyName: string
+): Promise<QRCodeResult> {
   try {
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
-      return {
-        success: false,
-        error: 'File size exceeds maximum limit of 5MB',
-      };
-    }
+    // Generate visitor registration URL
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const registrationUrl = `${baseUrl}/visitor/register?propertyId=${propertyId}`;
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      return {
-        success: false,
-        error: 'Invalid file type. Only JPEG, PNG, and WebP are allowed',
-      };
-    }
+    // Generate QR code as data URL
+    const qrCodeDataUrl = await QRCode.toDataURL(registrationUrl, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF',
+      },
+    });
 
-    // Create upload directory if it doesn't exist
-    const uploadPath = path.join(UPLOAD_DIR, folder);
-    await mkdir(uploadPath, { recursive: true });
+    // Save QR code as image file
+    const qrFolder = path.join(UPLOAD_DIR, 'qr-codes');
+    await mkdir(qrFolder, { recursive: true });
 
-    // Generate unique filename
-    const ext = path.extname(file.name);
-    const filename = `${uuidv4()}${ext}`;
-    const filepath = path.join(uploadPath, filename);
+    const filename = `${propertyId}-${randomUUID()}.png`;
+    const filepath = path.join(qrFolder, filename);
 
-    // Convert file to buffer and save
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // Convert data URL to buffer
+    const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
     await writeFile(filepath, buffer);
 
-    // Return public URL
-    const publicUrl = `/uploads/${folder}/${filename}`;
+    const publicUrl = `/uploads/qr-codes/${filename}`;
+
+    console.log('QR Code generated successfully:', publicUrl);
 
     return {
       success: true,
-      url: publicUrl,
-      filename: filename,
+      qrCodeUrl: publicUrl,
+      qrCodeDataUrl: qrCodeDataUrl,
     };
   } catch (error) {
-    console.error('File upload error:', error);
+    console.error('QR code generation error:', error);
     return {
       success: false,
-      error: 'Failed to upload file',
+      error: 'Failed to generate QR code',
     };
   }
-}
-
-export async function uploadBase64Image(
-  base64Data: string,
-  folder: 'photos' | 'id-cards' | 'documents'
-): Promise<UploadResult> {
-  try {
-    // Extract base64 data and mime type
-    const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-    
-    if (!matches || matches.length !== 3) {
-      return {
-        success: false,
-        error: 'Invalid base64 data',
-      };
-    }
-
-    const mimeType = matches[1];
-    const base64String = matches[2];
-
-    // Validate mime type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(mimeType)) {
-      return {
-        success: false,
-        error: 'Invalid file type. Only JPEG, PNG, and WebP are allowed',
-      };
-    }
-
-    // Convert base64 to buffer
-    const buffer = Buffer.from(base64String, 'base64');
-
-    // Check file size
-    if (buffer.length > MAX_FILE_SIZE) {
-      return {
-        success: false,
-        error: 'File size exceeds maximum limit of 5MB',
-      };
-    }
-
-    // Create upload directory
-    const uploadPath = path.join(UPLOAD_DIR, folder);
-    await mkdir(uploadPath, { recursive: true });
-
-    // Generate filename
-    const ext = mimeType.split('/')[1];
-    const filename = `${uuidv4()}.${ext}`;
-    const filepath = path.join(uploadPath, filename);
-
-    // Save file
-    await writeFile(filepath, buffer);
-
-    // Return public URL
-    const publicUrl = `/uploads/${folder}/${filename}`;
-
-    return {
-      success: true,
-      url: publicUrl,
-      filename: filename,
-    };
-  } catch (error) {
-    console.error('Base64 upload error:', error);
-    return {
-      success: false,
-      error: 'Failed to upload image',
-    };
-  }
-}
-
-export function validateImageFile(file: File): { valid: boolean; error?: string } {
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  
-  if (!allowedTypes.includes(file.type)) {
-    return {
-      valid: false,
-      error: 'Invalid file type. Only JPEG, PNG, and WebP are allowed',
-    };
-  }
-
-  if (file.size > MAX_FILE_SIZE) {
-    return {
-      valid: false,
-      error: 'File size exceeds maximum limit of 5MB',
-    };
-  }
-
-  return { valid: true };
 }

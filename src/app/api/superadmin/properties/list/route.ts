@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/app/lib/db/mongoose';
 import Property from '@/app/lib/db/models/Property';
+import User from '@/app/lib/db/models/User'; // ← Import User model
 import { authMiddleware } from '@/app/lib/auth/middleware';
 
 export async function GET(request: NextRequest) {
@@ -28,8 +29,8 @@ export async function GET(request: NextRequest) {
     const total = await Property.countDocuments(query);
 
     // Get properties with pagination
+    // Don't populate createdBy to avoid schema issues
     const properties = await Property.find(query)
-      .populate('createdBy', 'email role')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
