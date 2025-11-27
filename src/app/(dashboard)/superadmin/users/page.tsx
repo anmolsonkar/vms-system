@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import DashboardLayout from '@/app/components/layout/DashboardLayout';
-import UserTable from '@/app/components/superadmin/UserTable';
-import CreateUserModal from '@/app/components/superadmin/CreateUserModal';
-import Button from '@/app/components/shared/Button';
-import { Plus } from 'lucide-react';
+import React, { useState } from "react";
+import DashboardLayout from "@/app/components/layout/DashboardLayout";
+import UserTable from "@/app/components/superadmin/UserTable";
+import CreateUserModal from "@/app/components/superadmin/CreateUserModal";
+import Button from "@/app/components/shared/Button";
+import { Plus } from "lucide-react";
 
 export default function SuperAdminUsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -16,7 +16,9 @@ export default function SuperAdminUsersPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              User Management
+            </h1>
             <p className="text-gray-600 mt-1">Manage all users in the system</p>
           </div>
           <Button onClick={() => setShowCreateModal(true)}>

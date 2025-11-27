@@ -14,7 +14,15 @@ export async function PUT(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { userId, email, password, isActive, ...otherUpdates } = body;
+    const {
+      userId,
+      email,
+      password,
+      fullName,
+      unitNumber,
+      phoneNumber,
+      isActive,
+    } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -32,9 +40,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Build update object
-    const updateData: any = {};
+    // Build update object for User
+    const userUpdateData: any = {};
 
+    // Update email if changed
     if (email && email !== existingUser.email) {
       // Check if new email already exists
       const emailExists = await User.findOne({ email, _id: { $ne: userId } });
@@ -44,32 +53,65 @@ export async function PUT(request: NextRequest) {
           { status: 400 }
         );
       }
-      updateData.email = email;
+      userUpdateData.email = email.toLowerCase();
     }
 
+    // Update password if provided
     if (password) {
-      // Hash new password
-      updateData.password = await bcrypt.hash(password, 10);
+      if (password.length < 8) {
+        return NextResponse.json(
+          { success: false, error: "Password must be at least 8 characters" },
+          { status: 400 }
+        );
+      }
+      userUpdateData.password = await bcrypt.hash(password, 10);
     }
 
+    // Update fullName if provided
+    if (fullName !== undefined) {
+      userUpdateData.fullName = fullName;
+    }
+
+    // Update unitNumber if provided (for User model)
+    if (unitNumber !== undefined) {
+      userUpdateData.unitNumber = unitNumber;
+    }
+
+    // Update phoneNumber if provided (for User model)
+    if (phoneNumber !== undefined) {
+      userUpdateData.phoneNumber = phoneNumber;
+    }
+
+    // Update active status if provided
     if (typeof isActive !== "undefined") {
-      updateData.isActive = isActive;
+      userUpdateData.isActive = isActive;
     }
 
     // Update user
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { $set: updateData },
+      { $set: userUpdateData },
       { new: true }
     ).select("-password");
 
-    // If resident, update resident info
-    if (existingUser.role === "resident" && otherUpdates.residentData) {
-      await Resident.findOneAndUpdate(
-        { userId: userId },
-        { $set: otherUpdates.residentData },
-        { new: true }
-      );
+    // If resident, update resident info as well
+    if (existingUser.role === "resident") {
+      const residentUpdateData: any = {};
+
+      if (fullName) residentUpdateData.name = fullName;
+      if (unitNumber) residentUpdateData.unitNumber = unitNumber;
+      if (phoneNumber) residentUpdateData.phone = phoneNumber;
+      if (email) residentUpdateData.email = email.toLowerCase();
+      if (typeof isActive !== "undefined")
+        residentUpdateData.isActive = isActive;
+
+      if (Object.keys(residentUpdateData).length > 0) {
+        await Resident.findOneAndUpdate(
+          { userId: userId },
+          { $set: residentUpdateData },
+          { new: true }
+        );
+      }
     }
 
     return NextResponse.json(

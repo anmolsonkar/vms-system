@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from './jwt';
-import { AuthUser } from '../types';
+import { NextRequest, NextResponse } from "next/server";
+import { verifyToken } from "./jwt";
+import { AuthUser } from "../types";
 
 export async function authMiddleware(
   request: NextRequest,
@@ -8,13 +8,13 @@ export async function authMiddleware(
 ): Promise<{ user: AuthUser | null; error?: NextResponse }> {
   try {
     // Get token from cookie
-    const token = request.cookies.get('auth-token')?.value;
+    const token = request.cookies.get("auth-token")?.value;
 
     if (!token) {
       return {
         user: null,
         error: NextResponse.json(
-          { success: false, error: 'No authentication token provided' },
+          { success: false, error: "No authentication token provided" },
           { status: 401 }
         ),
       };
@@ -27,7 +27,7 @@ export async function authMiddleware(
       return {
         user: null,
         error: NextResponse.json(
-          { success: false, error: 'Invalid or expired token' },
+          { success: false, error: "Invalid or expired token" },
           { status: 401 }
         ),
       };
@@ -36,7 +36,8 @@ export async function authMiddleware(
     const user: AuthUser = {
       id: payload.userId,
       email: payload.email,
-      role: payload.role as 'superadmin' | 'resident' | 'guard',
+      fullName: payload.fullName, // ✅ Added fullName
+      role: payload.role as "superadmin" | "resident" | "guard",
       propertyId: payload.propertyId,
     };
 
@@ -47,7 +48,7 @@ export async function authMiddleware(
         return {
           user: null,
           error: NextResponse.json(
-            { success: false, error: 'Insufficient permissions' },
+            { success: false, error: "Insufficient permissions" },
             { status: 403 }
           ),
         };
@@ -56,11 +57,11 @@ export async function authMiddleware(
 
     return { user };
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error("Auth middleware error:", error);
     return {
       user: null,
       error: NextResponse.json(
-        { success: false, error: 'Authentication failed' },
+        { success: false, error: "Authentication failed" },
         { status: 500 }
       ),
     };
@@ -68,7 +69,7 @@ export async function authMiddleware(
 }
 
 export function getAuthUser(request: NextRequest): AuthUser | null {
-  const token = request.cookies.get('auth-token')?.value;
+  const token = request.cookies.get("auth-token")?.value;
   if (!token) return null;
 
   const payload = verifyToken(token);
@@ -77,7 +78,8 @@ export function getAuthUser(request: NextRequest): AuthUser | null {
   return {
     id: payload.userId,
     email: payload.email,
-    role: payload.role as 'superadmin' | 'resident' | 'guard',
+    fullName: payload.fullName, // ✅ Added fullName
+    role: payload.role as "superadmin" | "resident" | "guard",
     propertyId: payload.propertyId,
   };
 }

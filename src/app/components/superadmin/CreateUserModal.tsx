@@ -29,12 +29,12 @@ export default function CreateUserModal({
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    fullName: "", // ✅ FIXED: Changed from 'name' to 'fullName'
     role: "",
     propertyId: "",
     // Resident specific
-    name: "",
     unitNumber: "",
-    phone: "",
+    phoneNumber: "", // ✅ FIXED: Changed from 'phone' to 'phoneNumber'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -87,11 +87,11 @@ export default function CreateUserModal({
     setFormData({
       email: "",
       password: "",
+      fullName: "",
       role: "",
       propertyId: "",
-      name: "",
       unitNumber: "",
-      phone: "",
+      phoneNumber: "",
     });
     setError("");
     setSuccess(false);
@@ -172,18 +172,18 @@ export default function CreateUserModal({
             helperText="User cannot reset password. They must contact admin."
           />
 
+          <Input
+            label="Full Name"
+            required
+            value={formData.fullName}
+            onChange={(e) =>
+              setFormData({ ...formData, fullName: e.target.value })
+            }
+            placeholder="Enter full name"
+          />
+
           {formData.role === "resident" && (
             <>
-              <Input
-                label="Full Name"
-                required
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="Resident's full name"
-              />
-
               <Input
                 label="Unit Number"
                 required
@@ -199,11 +199,11 @@ export default function CreateUserModal({
                 type="tel"
                 required
                 maxLength={10}
-                value={formData.phone}
+                value={formData.phoneNumber}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    phone: e.target.value.replace(/\D/g, ""),
+                    phoneNumber: e.target.value.replace(/\D/g, ""),
                   })
                 }
                 placeholder="10-digit mobile number"

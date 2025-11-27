@@ -1,26 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/app/lib/db/mongoose';
-import User from '@/app/lib/db/models/User';
-import bcrypt from 'bcryptjs';
-import { authMiddleware } from '@/app/lib/auth/middleware';
+import { NextRequest, NextResponse } from "next/server";
+import connectDB from "@/app/lib/db/mongoose";
+import User from "@/app/lib/db/models/User";
+import bcrypt from "bcryptjs";
+import { authMiddleware } from "@/app/lib/auth/middleware";
 
 export async function POST(request: NextRequest) {
   try {
     // Authenticate superadmin
-    const { user, error } = await authMiddleware(request, 'superadmin');
+    const { user, error } = await authMiddleware(request, "superadmin");
     if (error) return error;
 
     await connectDB();
 
     const body = await request.json();
-    console.log('📥 Received user creation data:', JSON.stringify(body, null, 2));
+    console.log(
+      "📥 Received user creation data:",
+      JSON.stringify(body, null, 2)
+    );
 
     // Validate required fields
-    const { email, password, fullName, role, propertyId, unitNumber, phoneNumber } = body;
+    const {
+      email,
+      password,
+      fullName,
+      role,
+      propertyId,
+      unitNumber,
+      phoneNumber,
+    } = body;
 
     if (!email || !password || !fullName || !role) {
       return NextResponse.json(
-        { success: false, error: 'Email, password, full name, and role are required' },
+        {
+          success: false,
+          error: "Email, password, full name, and role are required",
+        },
         { status: 400 }
       );
     }
@@ -29,16 +43,16 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { success: false, error: 'Invalid email format' },
+        { success: false, error: "Invalid email format" },
         { status: 400 }
       );
     }
 
     // Validate role
-    const validRoles = ['resident', 'guard'];
+    const validRoles = ["resident", "guard"];
     if (!validRoles.includes(role.toLowerCase())) {
       return NextResponse.json(
-        { success: false, error: 'Role must be either resident or guard' },
+        { success: false, error: "Role must be either resident or guard" },
         { status: 400 }
       );
     }
@@ -46,7 +60,10 @@ export async function POST(request: NextRequest) {
     // Validate password length
     if (password.length < 8) {
       return NextResponse.json(
-        { success: false, error: 'Password must be at least 8 characters long' },
+        {
+          success: false,
+          error: "Password must be at least 8 characters long",
+        },
         { status: 400 }
       );
     }
@@ -55,7 +72,7 @@ export async function POST(request: NextRequest) {
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return NextResponse.json(
-        { success: false, error: 'User with this email already exists' },
+        { success: false, error: "User with this email already exists" },
         { status: 400 }
       );
     }
@@ -63,22 +80,25 @@ export async function POST(request: NextRequest) {
     // Validate property assignment for non-superadmin roles
     if (!propertyId) {
       return NextResponse.json(
-        { success: false, error: 'Property is required for resident and guard roles' },
+        {
+          success: false,
+          error: "Property is required for resident and guard roles",
+        },
         { status: 400 }
       );
     }
 
     // Validate resident-specific fields
-    if (role.toLowerCase() === 'resident') {
+    if (role.toLowerCase() === "resident") {
       if (!unitNumber) {
         return NextResponse.json(
-          { success: false, error: 'Unit number is required for residents' },
+          { success: false, error: "Unit number is required for residents" },
           { status: 400 }
         );
       }
       if (!phoneNumber) {
         return NextResponse.json(
-          { success: false, error: 'Phone number is required for residents' },
+          { success: false, error: "Phone number is required for residents" },
           { status: 400 }
         );
       }
@@ -97,17 +117,20 @@ export async function POST(request: NextRequest) {
     };
 
     // Add resident-specific fields
-    if (role.toLowerCase() === 'resident') {
+    if (role.toLowerCase() === "resident") {
       userData.unitNumber = unitNumber;
       userData.phoneNumber = phoneNumber;
     }
 
-    console.log('✅ Creating user with data:', { ...userData, password: '[HIDDEN]' });
+    console.log("✅ Creating user with data:", {
+      ...userData,
+      password: "[HIDDEN]",
+    });
 
     // Create user
     const newUser = await User.create(userData);
 
-    console.log('✅ User created successfully:', newUser._id);
+    console.log("✅ User created successfully:", newUser._id);
 
     return NextResponse.json(
       {
@@ -127,21 +150,21 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error('Create user error:', error);
+    console.error("Create user error:", error);
 
     // Handle MongoDB duplicate key error
     if (error.code === 11000) {
       return NextResponse.json(
-        { success: false, error: 'User with this email already exists' },
+        { success: false, error: "User with this email already exists" },
         { status: 400 }
       );
     }
 
     // Handle validation errors
-    if (error.name === 'ValidationError') {
+    if (error.name === "ValidationError") {
       const messages = Object.values(error.errors)
         .map((err: any) => err.message)
-        .join(', ');
+        .join(", ");
       return NextResponse.json(
         { success: false, error: messages },
         { status: 400 }
@@ -149,7 +172,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: "Internal server error" },
       { status: 500 }
     );
   }

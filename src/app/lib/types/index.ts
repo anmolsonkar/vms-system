@@ -1,7 +1,8 @@
 export interface AuthUser {
   id: string;
   email: string;
-  role: 'superadmin' | 'resident' | 'guard';
+  fullName?: string; // ✅ Added fullName
+  role: "superadmin" | "resident" | "guard";
   propertyId?: string;
 }
 
@@ -13,6 +14,7 @@ export interface LoginCredentials {
 export interface TokenPayload {
   userId: string;
   email: string;
+  fullName?: string; // ✅ Added fullName
   role: string;
   propertyId?: string;
 }
@@ -28,7 +30,7 @@ export interface PaginationParams {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 export interface PaginatedResponse<T> {

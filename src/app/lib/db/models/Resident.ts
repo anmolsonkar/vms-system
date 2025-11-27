@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IResident extends Document {
   userId: mongoose.Types.ObjectId;
@@ -24,37 +24,37 @@ const ResidentSchema = new Schema<IResident>(
   {
     userId: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
-      unique: true,
+      // ✅ FIXED: Removed unique: true from here, will use schema.index() instead
     },
     propertyId: {
       type: Schema.Types.ObjectId,
-      ref: 'Property',
+      ref: "Property",
       required: true,
     },
     unitNumber: {
       type: String,
-      required: [true, 'Unit number is required'],
+      required: [true, "Unit number is required"],
       trim: true,
     },
     name: {
       type: String,
-      required: [true, 'Resident name is required'],
+      required: [true, "Resident name is required"],
       trim: true,
     },
     phone: {
       type: String,
-      required: [true, 'Phone number is required'],
-      match: [/^[0-9]{10}$/, 'Please enter a valid 10-digit phone number'],
+      required: [true, "Phone number is required"],
+      match: [/^[0-9]{10}$/, "Please enter a valid 10-digit phone number"],
     },
     alternatePhone: {
       type: String,
-      match: [/^[0-9]{10}$/, 'Please enter a valid 10-digit phone number'],
+      match: [/^[0-9]{10}$/, "Please enter a valid 10-digit phone number"],
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
+      required: [true, "Email is required"],
       lowercase: true,
       trim: true,
     },
@@ -63,11 +63,13 @@ const ResidentSchema = new Schema<IResident>(
       default: 1,
       min: 1,
     },
-    vehicleNumbers: [{
-      type: String,
-      uppercase: true,
-      trim: true,
-    }],
+    vehicleNumbers: [
+      {
+        type: String,
+        uppercase: true,
+        trim: true,
+      },
+    ],
     emergencyContact: {
       name: { type: String },
       phone: { type: String },
@@ -83,11 +85,13 @@ const ResidentSchema = new Schema<IResident>(
   }
 );
 
-// Indexes
+// ✅ FIXED: Use schema.index() to create indexes (no duplicates)
+ResidentSchema.index({ userId: 1 }, { unique: true });
 ResidentSchema.index({ propertyId: 1, unitNumber: 1 });
-ResidentSchema.index({ userId: 1 });
 ResidentSchema.index({ phone: 1 });
 
-const Resident: Model<IResident> = mongoose.models.Resident || mongoose.model<IResident>('Resident', ResidentSchema);
+const Resident: Model<IResident> =
+  mongoose.models.Resident ||
+  mongoose.model<IResident>("Resident", ResidentSchema);
 
 export default Resident;
