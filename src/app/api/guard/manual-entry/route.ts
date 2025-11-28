@@ -1,7 +1,15 @@
+// =============================================================================
+// UPDATED MANUAL ENTRY API - WITH WHATSAPP INTEGRATION
+// File: src/app/api/guard/manual-entry/route.ts
+// =============================================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongoose";
 import User from "@/app/lib/db/models/User";
 import Visitor from "@/app/lib/db/models/Visitor";
+import { sendVisitorApprovalWhatsApp } from "@/app/lib/utils/twilio-whatsapp"; // ✅ NEW
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,30 +58,31 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ Resident found:", resident.fullName);
 
-    // Prepare visitor data matching your schema
+    // Prepare visitor data
     const visitorData: any = {
       name,
       phone,
       purpose,
-      hostResidentId: resident._id, // Use the correct field name from your schema
+      hostResidentId: resident._id,
+      hostResidentName: resident.fullName, // ✅ Store denormalized data
+      hostUnitNumber: resident.unitNumber,
+      hostPhone: resident.phoneNumber,
       propertyId: resident.propertyId,
-      status: "pending", // Waiting for resident approval
+      status: "pending",
       phoneVerified,
       isWalkIn,
     };
 
-    // Add optional fields only if provided
     if (vehicleNumber) {
       visitorData.vehicleNumber = vehicleNumber;
     }
 
-    // Handle photo - use provided photo or a placeholder
+    // Handle photo
     if (photoUrl) {
       visitorData.photoUrl = photoUrl;
     } else if (idCardImageUrl) {
-      visitorData.photoUrl = idCardImageUrl; // Use ID card as photo if no separate photo
+      visitorData.photoUrl = idCardImageUrl;
     } else {
-      // If no photo at all, set a placeholder or mark as optional
       visitorData.photoUrl =
         "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999'%3ENo Photo%3C/text%3E%3C/svg%3E";
     }
@@ -82,22 +91,45 @@ export async function POST(request: NextRequest) {
       visitorData.idCardImageUrl = idCardImageUrl;
     }
 
-    // Don't set createdBy as ObjectId, let it be undefined or remove it
-    // The schema might auto-populate this
-
     // Create visitor entry
     const visitor = await Visitor.create(visitorData);
 
     console.log("✅ Visitor entry created:", visitor._id);
 
-    // TODO: Send notification to resident
-    // You can add WhatsApp/SMS/Email notification here
-    // Example: await sendApprovalNotification(resident.phoneNumber, visitor);
+    // ========================================================================
+    // ✅ NEW: SEND WHATSAPP APPROVAL REQUEST TO RESIDENT
+    // ========================================================================
+    if (resident.phoneNumber) {
+      try {
+        const property = await connectDB().then(() =>
+          require("@/app/lib/db/models/Property").default.findById(
+            resident.propertyId
+          )
+        );
+
+        await sendVisitorApprovalWhatsApp(resident.phoneNumber, {
+          visitorId: visitor._id.toString(),
+          visitorName: visitor.name,
+          visitorPhone: visitor.phone,
+          purpose: visitor.purpose,
+          unitNumber: resident.unitNumber,
+          propertyName: property?.name || "Your Property",
+        });
+
+        console.log(
+          "✅ WhatsApp approval request sent to:",
+          resident.phoneNumber
+        );
+      } catch (whatsappError) {
+        console.error("⚠️ WhatsApp send failed (non-critical):", whatsappError);
+        // Don't fail the entire request if WhatsApp fails
+      }
+    }
 
     return NextResponse.json(
       {
         success: true,
-        message: "Approval request sent to resident",
+        message: "Approval request sent to resident via app and WhatsApp",
         data: {
           visitorId: visitor._id,
           status: "pending",
@@ -112,7 +144,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("❌ Manual entry error:", error);
 
-    // Better error messages
     let errorMessage = "Failed to create visitor entry";
     if (error.name === "ValidationError") {
       const errors = Object.keys(error.errors).map(

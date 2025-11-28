@@ -3,8 +3,9 @@ import connectDB from "@/app/lib/db/mongoose";
 import Visitor from "@/app/lib/db/models/Visitor";
 import User from "@/app/lib/db/models/User";
 import { authMiddleware } from "@/app/lib/auth/middleware";
-import { sendVisitorRejectedNotification } from "@/app/lib/utils/whatsapp";
-import { sendRejectionSMS } from "@/app/lib/utils/sms";
+import { sendVisitorRejectedWhatsApp } from "@/app/lib/utils/twilio-whatsapp";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       _id: userId,
       role: "resident",
       isActive: true,
-    }).select("fullName unitNumber phoneNumber propertyId");
+    }).select("fullName unitNumber phoneNumber propertyId email");
 
     if (!residentUser) {
       return NextResponse.json(
@@ -82,18 +83,27 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ Visitor rejected:", visitorId);
 
-    // Send SMS/WhatsApp to visitor
+    // ========================================================================
+    // SEND WHATSAPP REJECTION NOTIFICATION TO VISITOR
+    // ========================================================================
     if (visitor.phone) {
       try {
-        await sendRejectionSMS(visitor.phone, visitor.name, reason);
-        await sendVisitorRejectedNotification(
+        const rejectionReason = reason || "Request declined by resident";
+
+        const whatsappResult = await sendVisitorRejectedWhatsApp(
           visitor.phone,
           visitor.name,
-          reason
+          rejectionReason
         );
-        console.log("✅ Rejection notifications sent");
-      } catch (error) {
-        console.error("Notification send error:", error);
+
+        if (whatsappResult) {
+          console.log("✅ WhatsApp rejection sent to visitor:", visitor.phone);
+        } else {
+          console.log("⚠️ WhatsApp send failed (non-critical)");
+        }
+      } catch (whatsappError) {
+        console.error("⚠️ WhatsApp send error (non-critical):", whatsappError);
+        // Don't fail the entire request if WhatsApp fails
       }
     }
 
@@ -106,6 +116,8 @@ export async function POST(request: NextRequest) {
           visitorName: visitor.name,
           status: visitor.status,
           rejectedAt: visitor.rejectedAt,
+          rejectedBy: residentUser.fullName || residentUser.email,
+          rejectionReason: visitor.rejectionReason,
         },
       },
       { status: 200 }
