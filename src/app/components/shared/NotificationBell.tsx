@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Bell } from 'lucide-react';
-import { useNotifications } from '@/app/lib/hooks/useNotifications';
-import { usePolling } from '@/app/lib/hooks/usePolling';
-import { clsx } from 'clsx';
-import { format } from 'date-fns';
+import React, { useState, useRef, useEffect } from "react";
+import { Bell } from "lucide-react";
+import { useNotifications } from "@/app/lib/hooks/useNotifications";
+import { usePolling } from "@/app/lib/hooks/usePolling";
+import { clsx } from "clsx";
+import { format } from "date-fns";
 
 interface NotificationBellProps {
   userId: string;
@@ -14,7 +14,7 @@ interface NotificationBellProps {
 export default function NotificationBell({ userId }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
+
   const {
     notifications,
     unreadCount,
@@ -24,20 +24,26 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
   } = useNotifications(userId);
 
   // Poll for new notifications every 5 seconds
-  usePolling(() => {
-    fetchUnreadCount();
-  }, { interval: 5000, enabled: true });
+  usePolling(
+    () => {
+      fetchUnreadCount();
+    },
+    { interval: 5000, enabled: true }
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleNotificationClick = async (notificationId: string) => {
@@ -57,11 +63,11 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
         className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
       >
         <Bell className="h-6 w-6" />
-        
+
         {/* Badge */}
         {unreadCount > 0 && (
           <span className="absolute top-0 right-0 flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-red-500 rounded-full">
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
@@ -89,8 +95,8 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
                     key={notification._id}
                     onClick={() => handleNotificationClick(notification._id)}
                     className={clsx(
-                      'p-4 hover:bg-gray-50 cursor-pointer transition-colors',
-                      !notification.isRead && 'bg-blue-50'
+                      "p-4 hover:bg-gray-50 cursor-pointer transition-colors",
+                      !notification.isRead && "bg-blue-50"
                     )}
                   >
                     <div className="flex items-start justify-between">
@@ -102,10 +108,13 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
                           {notification.message}
                         </p>
                         <p className="text-xs text-gray-400 mt-2">
-                          {format(new Date(notification.createdAt), 'MMM dd, yyyy HH:mm')}
+                          {format(
+                            new Date(notification.createdAt),
+                            "MMM dd, yyyy HH:mm"
+                          )}
                         </p>
                       </div>
-                      
+
                       {!notification.isRead && (
                         <span className="ml-2 h-2 w-2 bg-blue-600 rounded-full"></span>
                       )}
