@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { ShieldCheck, Users, Building2, ArrowRight } from "lucide-react";
 
 export default function HomePage() {

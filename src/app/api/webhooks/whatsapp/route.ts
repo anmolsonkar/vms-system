@@ -1,348 +1,347 @@
-// =============================================================================
-// TWILIO WHATSAPP INTEGRATION - WITH INTERACTIVE BUTTONS
-// File: src/app/lib/utils/twilio-whatsapp.ts
-// =============================================================================
+import { NextRequest, NextResponse } from "next/server";
+import {
+  sendVisitorApprovedWhatsApp,
+  sendVisitorRejectedWhatsApp,
+  notifyGuardWhatsApp,
+} from "@/app/lib/utils/twilio-whatsapp";
+import Notification from "@/app/lib/db/models/Notification";
+import connectDB from "@/app/lib/db/mongoose";
+import Visitor from "@/app/lib/db/models/Visitor";
+import User from "@/app/lib/db/models/User";
 
-interface TwilioWhatsAppConfig {
-  accountSid: string;
-  authToken: string;
-  whatsappNumber: string; // whatsapp:+14155238886 (Twilio Sandbox)
-}
-
-const config: TwilioWhatsAppConfig = {
-  accountSid: process.env.TWILIO_ACCOUNT_SID || '',
-  authToken: process.env.TWILIO_AUTH_TOKEN || '',
-  whatsappNumber: process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886',
-};
+export const dynamic = "force-dynamic";
 
 // =============================================================================
-// HELPER: Format phone number for WhatsApp
+// HELPER: Send in-app notification to guard (same as app)
 // =============================================================================
-function formatWhatsAppNumber(phone: string): string {
-  // Remove all non-numeric characters
-  const cleaned = phone.replace(/\D/g, '');
-  
-  // If already has country code (starts with 91 and is 12 digits)
-  if (cleaned.startsWith('91') && cleaned.length === 12) {
-    return `whatsapp:+${cleaned}`;
-  }
-  
-  // If 10 digits, assume India and add 91
-  if (cleaned.length === 10) {
-    return `whatsapp:+91${cleaned}`;
-  }
-  
-  // If 11+ digits, assume it already has country code
-  if (cleaned.length >= 11) {
-    return `whatsapp:+${cleaned}`;
-  }
-  
-  // Default: assume India
-  return `whatsapp:+91${cleaned}`;
-}
-
-// =============================================================================
-// 1. SEND VISITOR APPROVAL REQUEST WITH INTERACTIVE BUTTONS
-// =============================================================================
-
-export async function sendVisitorApprovalWhatsApp(
-  residentPhone: string,
-  visitorData: {
-    visitorId: string;
-    visitorName: string;
-    visitorPhone: string;
-    purpose: string;
-    unitNumber: string;
-    propertyName: string;
-  }
-): Promise<{ success: boolean; error?: string; messageSid?: string }> {
-  try {
-    if (!config.accountSid || !config.authToken) {
-      console.error('❌ Twilio credentials not configured');
-      return { success: false, error: 'WhatsApp not configured' };
-    }
-
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`;
-
-    // Format phone numbers
-    const to = formatWhatsAppNumber(residentPhone);
-    const from = config.whatsappNumber;
-
-    // ✅ UPDATED: Removed property name, added structured buttons
-    const messageBody = `🔔 *VMS - Visitor Approval Request*
-
-👤 *Visitor:* ${visitorData.visitorName}
-📱 *Phone:* ${visitorData.visitorPhone}
-📍 *Unit:* ${visitorData.unitNumber}
-🎯 *Purpose:* ${visitorData.purpose}
-
-━━━━━━━━━━━━━━━━━━━
-*Quick Actions:*
-
-✅ Reply: APPROVE
-❌ Reply: REJECT
-
-━━━━━━━━━━━━━━━━━━━
-
-💡 _Tip: Just type and send one of the options above, or use the VMS app._`;
-
-    const formData = new URLSearchParams();
-    formData.append('To', to);
-    formData.append('From', from);
-    formData.append('Body', messageBody);
-
-    console.log('📤 Sending WhatsApp approval request');
-    console.log('  To:', to);
-    console.log('  From:', from);
-    console.log('  Resident:', residentPhone);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization:
-          'Basic ' +
-          Buffer.from(`${config.accountSid}:${config.authToken}`).toString('base64'),
-      },
-      body: formData.toString(),
-    });
-
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      console.error('❌ Twilio WhatsApp error:', {
-        status: response.status,
-        code: responseData.code,
-        message: responseData.message,
-        moreInfo: responseData.more_info,
-        details: responseData,
-      });
-      return { 
-        success: false, 
-        error: `Twilio Error ${responseData.code}: ${responseData.message}` 
-      };
-    }
-
-    console.log('✅ WhatsApp sent successfully');
-    console.log('  SID:', responseData.sid);
-    console.log('  Status:', responseData.status);
-
-    return { 
-      success: true, 
-      messageSid: responseData.sid 
-    };
-  } catch (error: any) {
-    console.error('❌ WhatsApp send exception:', error);
-    return { 
-      success: false, 
-      error: error.message || 'Unknown error' 
-    };
-  }
-}
-
-// =============================================================================
-// 2. SEND APPROVAL CONFIRMATION TO VISITOR
-// =============================================================================
-
-export async function sendVisitorApprovedWhatsApp(
-  visitorPhone: string,
-  visitorName: string,
-  residentName: string,
-  unitNumber: string,
-  propertyName: string
-): Promise<boolean> {
-  try {
-    if (!config.accountSid || !config.authToken) {
-      console.error('❌ Twilio credentials not configured');
-      return false;
-    }
-
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`;
-
-    const to = formatWhatsAppNumber(visitorPhone);
-    const from = config.whatsappNumber;
-
-    // ✅ UPDATED: Removed property name
-    const message = `✅ *VMS - Visit Approved*
-
-Dear *${visitorName}*,
-
-Your visit request has been *APPROVED*! ✨
-
-👤 *Host:* ${residentName}
-📍 *Unit:* ${unitNumber}
-
-━━━━━━━━━━━━━━━━━━━
-📌 *Next Steps:*
-Please proceed to the security gate and show this message to the guard for entry.
-
-⏰ *Valid for:* 24 hours from approval
-━━━━━━━━━━━━━━━━━━━
-
-Thank you! 🙏`;
-
-    const formData = new URLSearchParams();
-    formData.append('To', to);
-    formData.append('From', from);
-    formData.append('Body', message);
-
-    console.log('📤 Sending approval WhatsApp to visitor:', visitorPhone);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization:
-          'Basic ' +
-          Buffer.from(`${config.accountSid}:${config.authToken}`).toString('base64'),
-      },
-      body: formData.toString(),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('❌ Twilio error:', errorData);
-      return false;
-    }
-
-    const result = await response.json();
-    console.log('✅ Approval WhatsApp sent, SID:', result.sid);
-    return true;
-  } catch (error) {
-    console.error('❌ WhatsApp send error:', error);
-    return false;
-  }
-}
-
-// =============================================================================
-// 3. SEND REJECTION NOTIFICATION TO VISITOR
-// =============================================================================
-
-export async function sendVisitorRejectedWhatsApp(
-  visitorPhone: string,
-  visitorName: string,
-  reason?: string
-): Promise<boolean> {
-  try {
-    if (!config.accountSid || !config.authToken) {
-      console.error('❌ Twilio credentials not configured');
-      return false;
-    }
-
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`;
-
-    const to = formatWhatsAppNumber(visitorPhone);
-    const from = config.whatsappNumber;
-
-    const message = `❌ *VMS - Visit Request Declined*
-
-Dear *${visitorName}*,
-
-We regret to inform you that your visit request has been *DECLINED*.
-
-${reason ? `📝 *Reason:* ${reason}` : ''}
-
-━━━━━━━━━━━━━━━━━━━
-If you believe this is an error, please contact the resident directly.
-━━━━━━━━━━━━━━━━━━━
-
-Thank you for your understanding. 🙏`;
-
-    const formData = new URLSearchParams();
-    formData.append('To', to);
-    formData.append('From', from);
-    formData.append('Body', message);
-
-    console.log('📤 Sending rejection WhatsApp to visitor:', visitorPhone);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization:
-          'Basic ' +
-          Buffer.from(`${config.accountSid}:${config.authToken}`).toString('base64'),
-      },
-      body: formData.toString(),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('❌ Twilio error:', errorData);
-      return false;
-    }
-
-    const result = await response.json();
-    console.log('✅ Rejection WhatsApp sent, SID:', result.sid);
-    return true;
-  } catch (error) {
-    console.error('❌ WhatsApp send error:', error);
-    return false;
-  }
-}
-
-// =============================================================================
-// 4. NOTIFY GUARD OF APPROVAL
-// =============================================================================
-
-export async function notifyGuardWhatsApp(
-  guardPhone: string,
+async function notifyGuardOfApproval(
+  guardId: string,
+  visitorId: string,
   visitorName: string,
   residentName: string,
   unitNumber: string
-): Promise<boolean> {
+): Promise<void> {
   try {
-    if (!config.accountSid || !config.authToken) {
-      console.error('❌ Twilio credentials not configured');
-      return false;
-    }
+    await Notification.create({
+      userId: guardId,
+      message: `Visitor ${visitorName} approved by ${residentName} (Unit ${unitNumber})`,
+      type: "visitor_approved",
+      relatedId: visitorId,
+      isRead: false,
+    });
+    console.log("✅ In-app notification sent to guard:", guardId);
+  } catch (error) {
+    console.error("❌ Failed to notify guard:", error);
+  }
+}
 
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`;
+// =============================================================================
+// MAIN WEBHOOK HANDLER
+// =============================================================================
+export async function POST(request: NextRequest) {
+  try {
+    console.log("\n" + "=".repeat(70));
+    console.log("📨 WhatsApp Webhook Received");
+    console.log("=".repeat(70));
 
-    const to = formatWhatsAppNumber(guardPhone);
-    const from = config.whatsappNumber;
+    // Parse Twilio webhook data (application/x-www-form-urlencoded)
+    const formData = await request.formData();
+    const body = Object.fromEntries(formData);
 
-    const message = `🚨 *VMS - Visitor Approved*
-
-*Visitor:* ${visitorName}
-*Approved by:* ${residentName}
-*Unit:* ${unitNumber}
-
-━━━━━━━━━━━━━━━━━━━
-✅ *Action Required:* Allow entry when visitor arrives at gate.
-━━━━━━━━━━━━━━━━━━━
-
-Check VMS app for more details.`;
-
-    const formData = new URLSearchParams();
-    formData.append('To', to);
-    formData.append('From', from);
-    formData.append('Body', message);
-
-    console.log('📤 Sending guard notification WhatsApp:', guardPhone);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization:
-          'Basic ' +
-          Buffer.from(`${config.accountSid}:${config.authToken}`).toString('base64'),
-      },
-      body: formData.toString(),
+    console.log("📦 Webhook Body:", {
+      From: body.From,
+      Body: body.Body,
+      MessageSid: body.MessageSid,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('❌ Twilio error:', errorData);
-      return false;
+    const from = body.From as string; // e.g., "whatsapp:+919311377754"
+    const messageBody = (body.Body as string)?.trim().toUpperCase(); // ✅ Converts to uppercase, so "approve", "Approve", "APPROVE" all work
+
+    if (!from || !messageBody) {
+      console.log("❌ Missing From or Body");
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>Invalid request. Missing phone number or message.</Message>
+</Response>`,
+        {
+          headers: { "Content-Type": "text/xml" },
+        }
+      );
     }
 
-    const result = await response.json();
-    console.log('✅ Guard WhatsApp notification sent, SID:', result.sid);
-    return true;
-  } catch (error) {
-    console.error('❌ WhatsApp send error:', error);
-    return false;
+    // Extract phone number from WhatsApp format
+    // "whatsapp:+919311377754" → "9311377754"
+    const phoneMatch = from.match(/whatsapp:\+91(\d{10})/);
+    if (!phoneMatch) {
+      console.log("❌ Invalid phone format:", from);
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>Invalid phone number format.</Message>
+</Response>`,
+        {
+          headers: { "Content-Type": "text/xml" },
+        }
+      );
+    }
+
+    const phoneNumber = phoneMatch[1]; // "9311377754"
+    console.log("📱 Extracted phone:", phoneNumber);
+
+    // Connect to database
+    await connectDB();
+
+    // Find resident by phone number
+    const resident = await User.findOne({
+      phoneNumber,
+      role: "resident",
+      isActive: true,
+    });
+
+    if (!resident) {
+      console.log("❌ Resident not found for phone:", phoneNumber);
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>⚠️ Resident account not found. Please contact support.</Message>
+</Response>`,
+        {
+          headers: { "Content-Type": "text/xml" },
+        }
+      );
+    }
+
+    console.log("✅ Resident found:", {
+      id: resident._id,
+      name: resident.fullName || resident.email,
+      phone: resident.phoneNumber,
+    });
+
+    // Find the most recent pending visitor for this resident
+    const visitor = await Visitor.findOne({
+      hostResidentId: resident._id,
+      status: "pending",
+    })
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    if (!visitor) {
+      console.log("❌ No pending visitor found for resident:", resident._id);
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>⚠️ No pending visitor requests found. All visitors may already be processed.</Message>
+</Response>`,
+        {
+          headers: { "Content-Type": "text/xml" },
+        }
+      );
+    }
+
+    console.log("✅ Pending visitor found:", {
+      id: visitor._id,
+      name: visitor.name,
+      phone: visitor.phoneNumber,
+      purpose: visitor.purpose,
+    });
+
+    // =============================================================================
+    // PROCESS APPROVE
+    // =============================================================================
+    if (
+      messageBody === "APPROVE" ||
+      messageBody === "YES" ||
+      messageBody === "ACCEPT" ||
+      messageBody === "OK"
+    ) {
+      console.log("✅ Processing APPROVAL via WhatsApp...");
+
+      // ✅ UPDATE VISITOR STATUS (same as app)
+      visitor.status = "approved";
+      visitor.approvedBy = resident._id;
+      visitor.approvedAt = new Date();
+      await visitor.save();
+
+      console.log("✅ Visitor approved in database");
+
+      // Get property name for better messaging
+      let propertyName = "the property";
+      if (visitor.propertyId) {
+        const property = await Property.findById(visitor.propertyId);
+        if (property) {
+          propertyName = property.name;
+        }
+      }
+
+      // ✅ SEND WHATSAPP TO VISITOR (same as app)
+      const approvalSent = await sendVisitorApprovedWhatsApp(
+        visitor.phoneNumber,
+        visitor.name,
+        resident.fullName || resident.email,
+        visitor.hostUnitNumber || "N/A",
+        propertyName
+      );
+
+      if (approvalSent) {
+        console.log("✅ Approval WhatsApp sent to visitor");
+      } else {
+        console.log("⚠️ Failed to send approval WhatsApp to visitor");
+      }
+
+      // ✅ NOTIFY ALL GUARDS AT PROPERTY (same as app)
+      if (visitor.propertyId) {
+        // Find all active guards at this property
+        const guards = await User.find({
+          role: "guard",
+          propertyId: visitor.propertyId,
+          isActive: true,
+        });
+
+        console.log(`📢 Notifying ${guards.length} guards...`);
+
+        for (const guard of guards) {
+          // Send in-app notification
+          await notifyGuardOfApproval(
+            guard._id.toString(),
+            visitor._id.toString(),
+            visitor.name,
+            resident.fullName || resident.email,
+            visitor.hostUnitNumber || "N/A"
+          );
+
+          // Send WhatsApp notification if guard has phone
+          if (guard.phoneNumber) {
+            await notifyGuardWhatsApp(
+              guard.phoneNumber,
+              visitor.name,
+              resident.fullName || resident.email,
+              visitor.hostUnitNumber || "N/A"
+            );
+          }
+        }
+
+        console.log("✅ All guards notified (in-app + WhatsApp)");
+      }
+
+      // ✅ SEND CONFIRMATION TO RESIDENT
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>✅ *Visitor Approved Successfully!*
+
+*Visitor:* ${visitor.name}
+*Phone:* ${visitor.phoneNumber}
+
+The visitor has been notified via WhatsApp and guards have been alerted.
+
+Thank you! 🙏</Message>
+</Response>`,
+        {
+          headers: { "Content-Type": "text/xml" },
+        }
+      );
+    }
+
+    // =============================================================================
+    // PROCESS REJECT
+    // =============================================================================
+    else if (
+      messageBody === "REJECT" ||
+      messageBody === "NO" ||
+      messageBody === "DECLINE" ||
+      messageBody === "DENIED"
+    ) {
+      console.log("❌ Processing REJECTION via WhatsApp...");
+
+      // ✅ UPDATE VISITOR STATUS (same as app)
+      visitor.status = "rejected";
+      visitor.rejectedBy = resident._id;
+      visitor.rejectedAt = new Date();
+      visitor.rejectionReason = "Declined via WhatsApp";
+      await visitor.save();
+
+      console.log("✅ Visitor rejected in database");
+
+      // ✅ SEND WHATSAPP TO VISITOR (same as app)
+      const rejectionSent = await sendVisitorRejectedWhatsApp(
+        visitor.phoneNumber,
+        visitor.name,
+        "Declined via WhatsApp"
+      );
+
+      if (rejectionSent) {
+        console.log("✅ Rejection WhatsApp sent to visitor");
+      } else {
+        console.log("⚠️ Failed to send rejection WhatsApp to visitor");
+      }
+
+      // ✅ SEND CONFIRMATION TO RESIDENT
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>❌ *Visitor Request Declined*
+
+*Visitor:* ${visitor.name}
+*Phone:* ${visitor.phoneNumber}
+
+The visitor has been notified about the rejection.
+
+Thank you! 🙏</Message>
+</Response>`,
+        {
+          headers: { "Content-Type": "text/xml" },
+        }
+      );
+    }
+
+    // =============================================================================
+    // INVALID RESPONSE
+    // =============================================================================
+    else {
+      console.log("⚠️ Invalid response:", messageBody);
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>⚠️ *Invalid Response*
+
+You have a pending visitor request from:
+*${visitor.name}* (${visitor.phoneNumber})
+
+Please reply with one of these:
+✅ *APPROVE* - to allow entry
+❌ *REJECT* - to decline
+
+You can also use the VMS app.</Message>
+</Response>`,
+        {
+          headers: { "Content-Type": "text/xml" },
+        }
+      );
+    }
+  } catch (error: any) {
+    console.error("❌ Webhook error:", error);
+    return new NextResponse(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>⚠️ An error occurred processing your request. Please try again or use the VMS app.</Message>
+</Response>`,
+      {
+        status: 500,
+        headers: { "Content-Type": "text/xml" },
+      }
+    );
   }
+}
+
+// =============================================================================
+// GET handler for testing
+// =============================================================================
+export async function GET() {
+  return NextResponse.json({
+    message: "WhatsApp Webhook is active",
+    endpoint: "/api/webhooks/whatsapp",
+    method: "POST",
+    description: "Handles APPROVE/REJECT responses from residents via WhatsApp",
+  });
 }

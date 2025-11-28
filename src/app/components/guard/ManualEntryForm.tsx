@@ -49,7 +49,7 @@ export default function ManualEntryForm() {
     unitNumber: "",
     vehicleNumber: "",
     idPhoto: null,
-    otpVerified: true
+    otpVerified: true,
   });
 
   const [selectedResident, setSelectedResident] = useState<Resident | null>(
@@ -273,6 +273,16 @@ export default function ManualEntryForm() {
   };
 
   // Form Submission
+  // Add this function at the top of your component, before handleSubmit
+  const capitalizeWords = (str: string): string => {
+    if (!str) return "";
+    return str
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -298,9 +308,9 @@ export default function ManualEntryForm() {
       setLoading(true);
 
       const visitorData = {
-        name: formData.name,
+        name: capitalizeWords(formData.name), // ← CHANGED
         phone: formData.phone,
-        purpose: formData.purpose,
+        purpose: capitalizeWords(formData.purpose), // ← CHANGED
         hostResidentId: formData.residentId,
         vehicleNumber: formData.vehicleNumber || undefined,
         idCardImageUrl:
@@ -351,7 +361,6 @@ export default function ManualEntryForm() {
       setLoading(false);
     }
   };
-
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="bg-white rounded-lg shadow-lg p-6">
@@ -721,7 +730,9 @@ export default function ManualEntryForm() {
               {otp.map((digit, index) => (
                 <input
                   key={index}
-                  ref={(el) => { otpInputRefs.current[index] = el; }}
+                  ref={(el) => {
+                    otpInputRefs.current[index] = el;
+                  }}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}
