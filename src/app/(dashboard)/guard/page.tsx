@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "@/app/components/layout/DashboardLayout";
 import Card from "@/app/components/shared/Card";
 import LoadingSpinner from "@/app/components/shared/LoadingSpinner";
-import { Clock, CheckCircle, UserCheck, AlertCircle } from "lucide-react";
+import { Clock, CheckCircle, UserCheck, AlertCircle, Bell } from "lucide-react";
 import axios from "axios";
 
 export default function GuardDashboardPage() {
+  const router = useRouter();
   const [stats, setStats] = useState({
     pending: 0,
     approved: 0,
@@ -15,6 +17,7 @@ export default function GuardDashboardPage() {
     exitMarked: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -48,16 +51,38 @@ export default function GuardDashboardPage() {
     }
   }, []);
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await axios.get("/api/guard/notifications/unread-count");
+      if (res.data.success) {
+        setNotificationCount(res.data.count || 0);
+      }
+    } catch (error) {
+      console.error("Notification fetch error:", error);
+    }
+  }, []);
+
   // Initial fetch
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+    fetchNotifications();
+  }, [fetchStats, fetchNotifications]);
 
-  // ✅ REAL-TIME POLLING - Refresh every 5 seconds
+  // Real-time polling
   useEffect(() => {
-    const interval = setInterval(fetchStats, 5000);
-    return () => clearInterval(interval);
-  }, [fetchStats]);
+    const statsInterval = setInterval(fetchStats, 5000); // Every 5 seconds
+    const notifInterval = setInterval(fetchNotifications, 3000); // Every 3 seconds
+
+    return () => {
+      clearInterval(statsInterval);
+      clearInterval(notifInterval);
+    };
+  }, [fetchStats, fetchNotifications]);
+
+  // Handle notification click - navigate to notifications page
+  const handleNotificationClick = () => {
+    router.push("/guard/notifications");
+  };
 
   if (loading) {
     return (
@@ -101,13 +126,29 @@ export default function GuardDashboardPage() {
   return (
     <DashboardLayout role="guard">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Security Dashboard
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Monitor and manage visitor access
-          </p>
+        {/* Header with Notification Bell */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Security Dashboard
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Monitor and manage visitor access
+            </p>
+          </div>
+
+          {/* Notification Bell */}
+          <button
+            onClick={handleNotificationClick}
+            className="relative p-3 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <Bell className="h-6 w-6 text-gray-600" />
+            {notificationCount > 0 && (
+              <span className="absolute top-1 right-1 h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                {notificationCount > 9 ? "9+" : notificationCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Stats */}

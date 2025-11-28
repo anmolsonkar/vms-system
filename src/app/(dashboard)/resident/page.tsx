@@ -1,17 +1,21 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/app/components/layout/DashboardLayout";
 import ApprovalCard from "@/app/components/resident/ApprovalCard";
 import Card from "@/app/components/shared/Card";
 import LoadingSpinner from "@/app/components/shared/LoadingSpinner";
-import { UserCheck, Clock, CheckCircle } from "lucide-react";
+import { UserCheck, Clock, CheckCircle, Bell } from "lucide-react";
 import axios from "axios";
 
 export default function ResidentDashboardPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [pendingVisitors, setPendingVisitors] = useState([]);
   const [stats, setStats] = useState({ pending: 0, approved: 0, checkedIn: 0 });
   const [loading, setLoading] = useState(true);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -40,16 +44,38 @@ export default function ResidentDashboardPage() {
     }
   }, []);
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await axios.get("/api/resident/notifications/unread-count");
+      if (res.data.success) {
+        setNotificationCount(res.data.count || 0);
+      }
+    } catch (error) {
+      console.error("Notification fetch error:", error);
+    }
+  }, []);
+
   // Initial fetch
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchNotifications();
+  }, [fetchData, fetchNotifications]);
 
-  // ✅ REAL-TIME POLLING - Refresh every 5 seconds
+  // Real-time polling
   useEffect(() => {
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+    const dataInterval = setInterval(fetchData, 5000); // Every 5 seconds
+    const notifInterval = setInterval(fetchNotifications, 3000); // Every 3 seconds
+
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(notifInterval);
+    };
+  }, [fetchData, fetchNotifications]);
+
+  // Handle notification click - navigate to notifications page
+  const handleNotificationClick = () => {
+    router.push("/resident/notifications");
+  };
 
   if (loading) {
     return (
@@ -83,11 +109,27 @@ export default function ResidentDashboardPage() {
   return (
     <DashboardLayout role="resident">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">
-            Welcome back! Here's your visitor overview.
-          </p>
+        {/* Header with Notification Bell */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600 mt-1">
+              Welcome back! Here's your visitor overview.
+            </p>
+          </div>
+
+          {/* Notification Bell */}
+          <button
+            onClick={handleNotificationClick}
+            className="relative p-3 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <Bell className="h-6 w-6 text-gray-600" />
+            {notificationCount > 0 && (
+              <span className="absolute top-1 right-1 h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                {notificationCount > 9 ? "9+" : notificationCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Stats */}

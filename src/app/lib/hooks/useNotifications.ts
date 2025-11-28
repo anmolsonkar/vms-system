@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 
 interface Notification {
   _id: string;
@@ -23,12 +23,12 @@ export function useNotifications(userId?: string) {
     if (!userId) return;
 
     try {
-      const response = await axios.get('/api/resident/notifications/list');
+      const response = await axios.get("/api/resident/notifications/list");
       if (response.data.success) {
         setNotifications(response.data.data.notifications);
       }
     } catch (error) {
-      console.error('Fetch notifications error:', error);
+      console.error("Fetch notifications error:", error);
     } finally {
       setLoading(false);
     }
@@ -38,20 +38,25 @@ export function useNotifications(userId?: string) {
     if (!userId) return;
 
     try {
-      const response = await axios.get('/api/resident/notifications/unread-count');
+      const response = await axios.get(
+        "/api/resident/notifications/unread-count"
+      );
       if (response.data.success) {
         setUnreadCount(response.data.data.count);
       }
     } catch (error) {
-      console.error('Fetch unread count error:', error);
+      console.error("Fetch unread count error:", error);
     }
   }, [userId]);
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const response = await axios.post('/api/resident/notifications/mark-read', {
-        notificationId,
-      });
+      const response = await axios.post(
+        "/api/resident/notifications/mark-read",
+        {
+          notificationId,
+        }
+      );
 
       if (response.data.success) {
         setNotifications((prev) =>
@@ -62,17 +67,19 @@ export function useNotifications(userId?: string) {
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error('Mark as read error:', error);
+      console.error("Mark as read error:", error);
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      const unreadIds = notifications.filter((n) => !n.isRead).map((n) => n._id);
+      const unreadIds = notifications
+        .filter((n) => !n.isRead)
+        .map((n) => n._id);
 
       await Promise.all(unreadIds.map((id) => markAsRead(id)));
     } catch (error) {
-      console.error('Mark all as read error:', error);
+      console.error("Mark all as read error:", error);
     }
   };
 
