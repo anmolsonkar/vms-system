@@ -185,7 +185,7 @@ export default function ApprovalCard({ visitor, onApprove, onReject }: ApprovalC
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder="Enter reason for rejection..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             rows={4}
           />
 

@@ -5,7 +5,7 @@ import { ShieldCheck, Users, Building2, ArrowRight } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 flex flex-col">
+    <div className="min-h-screen bg-linear-to-br from-purple-600 via-purple-700 to-indigo-800 flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-6 md:px-12 py-6">
         <div className="flex items-center space-x-3">
@@ -79,8 +79,8 @@ export default function HomePage() {
             <RoleCard
               title="Security Guard"
               description="Check-in visitors and control gate access."
-              icon={<ShieldCheck className="h-8 w-8 text-blue-600" />}
-              iconBg="bg-blue-100"
+              icon={<ShieldCheck className="h-8 w-8 text-purple-600" />}
+              iconBg="bg-purple-100"
               href="/login"
             />
           </div>

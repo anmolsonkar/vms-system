@@ -395,7 +395,7 @@ export default function ManualEntryForm() {
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Enter visitor name"
               required
             />
@@ -418,7 +418,7 @@ export default function ManualEntryForm() {
                     otpVerified: false,
                   });
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="10-digit phone number"
                 maxLength={10}
                 required
@@ -429,7 +429,7 @@ export default function ManualEntryForm() {
                   type="button"
                   onClick={sendOTP}
                   disabled={formData.phone.length !== 10 || otpLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {otpLoading ? "Sending..." : "Send OTP"}
                 </button>
@@ -449,7 +449,7 @@ export default function ManualEntryForm() {
             </label>
             <div
               onClick={openResidentSelector}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition-colors bg-white"
             >
               {selectedResident ? (
                 <div>
@@ -492,7 +492,7 @@ export default function ManualEntryForm() {
               onChange={(e) =>
                 setFormData({ ...formData, purpose: e.target.value })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               rows={3}
               placeholder="Enter purpose of visit (e.g., Personal visit, Delivery, Business meeting)"
               required
@@ -513,7 +513,7 @@ export default function ManualEntryForm() {
                   vehicleNumber: e.target.value.toUpperCase(),
                 })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="e.g., DL01AB1234"
             />
           </div>
@@ -529,7 +529,7 @@ export default function ManualEntryForm() {
                 <button
                   type="button"
                   onClick={startCamera}
-                  className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-blue-600"
+                  className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-purple-600"
                 >
                   <Camera className="w-6 h-6" />
                   <span className="font-medium">Capture ID Photo</span>
@@ -550,7 +550,7 @@ export default function ManualEntryForm() {
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, idPhoto: null })}
-                  className="text-sm text-blue-600 hover:text-blue-700 underline"
+                  className="text-sm text-purple-600 hover:text-purple-700 underline"
                 >
                   Add Photo Instead
                 </button>
@@ -592,7 +592,7 @@ export default function ManualEntryForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg"
+            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg"
           >
             {loading ? "Sending Request..." : "Send Approval Request"}
           </button>
@@ -636,7 +636,7 @@ export default function ManualEntryForm() {
                 <button
                   type="button"
                   onClick={capturePhoto}
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <Camera className="w-5 h-5" />
                   Capture Photo
@@ -671,7 +671,7 @@ export default function ManualEntryForm() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, unit, or phone..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 autoFocus
               />
             </div>
@@ -688,7 +688,7 @@ export default function ManualEntryForm() {
                       key={resident._id}
                       type="button"
                       onClick={() => selectResident(resident)}
-                      className="w-full p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
+                      className="w-full p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-left"
                     >
                       <div className="font-medium text-gray-900">
                         {resident.fullName}
@@ -739,7 +739,7 @@ export default function ManualEntryForm() {
                   value={digit}
                   onChange={(e) => handleOTPChange(index, e.target.value)}
                   onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                  className="w-12 h-12 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-12 h-12 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               ))}
             </div>
@@ -751,7 +751,7 @@ export default function ManualEntryForm() {
             ) : (
               <button
                 onClick={handleResendOTP}
-                className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="w-full text-sm text-purple-600 hover:text-purple-700 font-medium"
               >
                 Resend OTP
               </button>

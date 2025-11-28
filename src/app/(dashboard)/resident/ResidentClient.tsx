@@ -103,7 +103,7 @@ export default function ResidentClient() {
       label: "Currently Inside",
       value: stats.checkedIn,
       icon: UserCheck,
-      color: "bg-blue-500",
+      color: "bg-purple-500",
     },
   ];
 

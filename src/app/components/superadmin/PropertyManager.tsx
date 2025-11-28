@@ -181,7 +181,7 @@ export default function PropertyManager() {
                   {property.qrCode && (
                     <button
                       onClick={() => handleViewQR(property.qrCode!)}
-                      className="text-blue-600 hover:text-blue-700"
+                      className="text-purple-600 hover:text-purple-700"
                       title="View QR Code"
                     >
                       <QrCode className="h-6 w-6" />
@@ -327,7 +327,7 @@ export default function PropertyManager() {
               href={selectedQR}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-sm break-all"
+              className="text-purple-600 hover:underline text-sm break-all"
             >
               {selectedQR}
             </a>

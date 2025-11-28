@@ -63,7 +63,7 @@ export default function Navbar({ onMenuClick, showMenu = true }: NavbarProps) {
           )}
 
           <div>
-            <h1 className="text-xl font-bold text-blue-600">VMS</h1>
+            <h1 className="text-xl font-bold text-purple-600">VMS</h1>
             <p className="text-xs text-gray-500">Visitor Management System</p>
           </div>
         </div>
@@ -87,7 +87,7 @@ export default function Navbar({ onMenuClick, showMenu = true }: NavbarProps) {
                 </p>
               </div>
 
-              <div className="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+              <div className="h-10 w-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
                 {getInitials()}
               </div>
             </div>

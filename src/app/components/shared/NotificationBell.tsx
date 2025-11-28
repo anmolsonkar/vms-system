@@ -96,7 +96,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
                     onClick={() => handleNotificationClick(notification._id)}
                     className={clsx(
                       "p-4 hover:bg-gray-50 cursor-pointer transition-colors",
-                      !notification.isRead && "bg-blue-50"
+                      !notification.isRead && "bg-purple-50"
                     )}
                   >
                     <div className="flex items-start justify-between">
@@ -116,7 +116,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
                       </div>
 
                       {!notification.isRead && (
-                        <span className="ml-2 h-2 w-2 bg-blue-600 rounded-full"></span>
+                        <span className="ml-2 h-2 w-2 bg-purple-600 rounded-full"></span>
                       )}
                     </div>
                   </div>
@@ -130,7 +130,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
             <div className="p-3 border-t border-gray-200 text-center">
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm text-purple-600 hover:text-purple-700 font-medium"
               >
                 View All Notifications
               </button>

@@ -39,7 +39,7 @@ export default function Select({
         id={selectId}
         className={clsx(
           'px-4 py-2 border rounded-lg transition-colors',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+          'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent',
           'disabled:bg-gray-100 disabled:cursor-not-allowed',
           'bg-white',
           error

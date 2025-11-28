@@ -48,7 +48,7 @@ export default function NotificationItem({
       case "visitor_rejected":
         return <XCircle className="h-5 w-5 text-red-500" />;
       case "visitor_checked_in":
-        return <UserCheck className="h-5 w-5 text-blue-500" />;
+        return <UserCheck className="h-5 w-5 text-purple-500" />;
       case "visitor_exit_marked":
         return <AlertCircle className="h-5 w-5 text-orange-500" />;
       case "visitor_checked_out":
@@ -99,7 +99,7 @@ export default function NotificationItem({
       className={`p-4 rounded-lg border cursor-pointer transition-all ${
         notification.isRead
           ? "bg-white border-gray-200 hover:bg-gray-50"
-          : "bg-blue-50 border-blue-200 hover:bg-blue-100"
+          : "bg-purple-50 border-purple-200 hover:bg-purple-100"
       }`}
     >
       <div className="flex items-start space-x-3">
@@ -110,7 +110,7 @@ export default function NotificationItem({
             <div className="flex-1">
               <p
                 className={`text-sm font-medium ${
-                  notification.isRead ? "text-gray-900" : "text-blue-900"
+                  notification.isRead ? "text-gray-900" : "text-purple-900"
                 }`}
               >
                 {notification.title}
@@ -126,7 +126,7 @@ export default function NotificationItem({
             </div>
 
             {!notification.isRead && (
-              <span className="ml-2 h-2 w-2 bg-blue-500 rounded-full flex-shrink-0"></span>
+              <span className="ml-2 h-2 w-2 bg-purple-500 rounded-full flex-shrink-0"></span>
             )}
           </div>
         </div>

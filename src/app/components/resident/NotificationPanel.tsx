@@ -52,14 +52,14 @@ export default function NotificationPanel({ userId }: NotificationPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Bell className="h-6 w-6 text-blue-600" />
+          <Bell className="h-6 w-6 text-purple-600" />
           <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
         </div>
 
         {notifications.length > 0 && (
           <button
             onClick={markAllAsRead}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            className="text-sm text-purple-600 hover:text-purple-700 font-medium"
           >
             Mark all as read
           </button>
@@ -81,7 +81,7 @@ export default function NotificationPanel({ userId }: NotificationPanelProps) {
               key={notification._id}
               className={clsx(
                 "cursor-pointer transition-all",
-                !notification.isRead && "bg-blue-50 border-blue-200"
+                !notification.isRead && "bg-purple-50 border-purple-200"
               )}
               padding="md"
               hover
@@ -94,7 +94,7 @@ export default function NotificationPanel({ userId }: NotificationPanelProps) {
                       {notification.type.replace(/_/g, " ").toUpperCase()}
                     </Badge>
                     {!notification.isRead && (
-                      <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
+                      <span className="h-2 w-2 bg-purple-600 rounded-full"></span>
                     )}
                   </div>
 

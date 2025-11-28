@@ -27,7 +27,7 @@ export default function LoadingSpinner({
       <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
         <div className="text-center">
           <Loader2
-            className={clsx("animate-spin text-blue-600 mx-auto", sizes[size])}
+            className={clsx("animate-spin text-purple-600 mx-auto", sizes[size])}
           />
           {text && <p className="mt-4 text-gray-600">{text}</p>}
         </div>
@@ -37,7 +37,7 @@ export default function LoadingSpinner({
 
   return (
     <div className="flex flex-col items-center justify-center py-8">
-      <Loader2 className={clsx("animate-spin text-blue-600", sizes[size])} />
+      <Loader2 className={clsx("animate-spin text-purple-600", sizes[size])} />
       {text && <p className="mt-4 text-gray-600">{text}</p>}
     </div>
   );

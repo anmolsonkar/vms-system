@@ -111,7 +111,7 @@ export default function GuardDashboardPage() {
       label: "Currently Inside",
       value: stats.active,
       icon: UserCheck,
-      color: "bg-blue-500",
+      color: "bg-purple-500",
       description: "Checked-in visitors",
     },
     {
@@ -188,7 +188,7 @@ export default function GuardDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <a
               href="/guard/pending"
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
             >
               <Clock className="h-8 w-8 text-gray-600 mb-2" />
               <h4 className="font-medium text-gray-900">View Pending</h4>
@@ -199,7 +199,7 @@ export default function GuardDashboardPage() {
 
             <a
               href="/guard/active-visitors"
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
             >
               <UserCheck className="h-8 w-8 text-gray-600 mb-2" />
               <h4 className="font-medium text-gray-900">Active Visitors</h4>
@@ -210,7 +210,7 @@ export default function GuardDashboardPage() {
 
             <a
               href="/guard/manual-entry"
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
             >
               <CheckCircle className="h-8 w-8 text-gray-600 mb-2" />
               <h4 className="font-medium text-gray-900">Manual Entry</h4>

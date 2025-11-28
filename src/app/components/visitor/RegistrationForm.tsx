@@ -310,7 +310,7 @@ export default function RegistrationForm({
                     <button
                       type="button"
                       onClick={startCamera}
-                      className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-blue-600"
+                      className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-purple-600"
                     >
                       <Camera className="w-6 h-6" />
                       <span className="font-medium">Capture ID Card</span>
@@ -346,7 +346,7 @@ export default function RegistrationForm({
                     onChange={(e) =>
                       setFormData({ ...formData, purpose: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     rows={3}
                     placeholder="Enter purpose of visit (e.g., Personal visit, Delivery, Business meeting)"
                   />
@@ -361,7 +361,7 @@ export default function RegistrationForm({
                     required
                     value={formData.hostResidentId}
                     onChange={(e) => handleResidentSelect(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   >
                     <option value="">Select Resident</option>
                     {residents.map((r) => (
@@ -455,7 +455,7 @@ export default function RegistrationForm({
                 <button
                   type="button"
                   onClick={captureIDCard}
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <Camera className="w-5 h-5" />
                   Capture Photo

@@ -120,7 +120,7 @@ export default function OTPVerification({
             value={digit}
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
-            className="w-12 h-12 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-12 h-12 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         ))}
       </div>
@@ -136,7 +136,7 @@ export default function OTPVerification({
         ) : (
           <button
             onClick={handleResend}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            className="text-sm text-purple-600 hover:text-purple-700 font-medium"
           >
             <RefreshCw className="h-4 w-4 inline mr-1" />
             Resend OTP
