@@ -43,7 +43,7 @@ export default function ManualEntryForm() {
 
   const [formData, setFormData] = useState<VisitorFormData>({
     name: "",
-    phone: "7055877416",
+    phone: "9311377754",
     purpose: "",
     residentId: "",
     unitNumber: "",
