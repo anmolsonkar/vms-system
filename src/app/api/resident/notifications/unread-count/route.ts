@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/app/lib/db/mongoose';
 import { authMiddleware } from '@/app/lib/auth/middleware';

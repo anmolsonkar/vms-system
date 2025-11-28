@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/app/lib/db/mongoose';
 import Notification from '@/app/lib/db/models/Notification';
