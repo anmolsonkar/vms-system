@@ -5,27 +5,28 @@ import {
   notifyGuardWhatsApp,
 } from "@/app/lib/utils/twilio-whatsapp";
 import Notification from "@/app/lib/db/models/Notification";
+import Property from "@/app/lib/db/models/Property"; // ✅ ADDED
 import connectDB from "@/app/lib/db/mongoose";
 import Visitor from "@/app/lib/db/models/Visitor";
 import User from "@/app/lib/db/models/User";
 
 export const dynamic = "force-dynamic";
 
-// =============================================================================
-// HELPER: Send in-app notification to guard (same as app)
-// =============================================================================
 async function notifyGuardOfApproval(
   guardId: string,
   visitorId: string,
   visitorName: string,
   residentName: string,
-  unitNumber: string
+  unitNumber: string,
+  propertyId: string
 ): Promise<void> {
   try {
     await Notification.create({
       userId: guardId,
+      title: "Visitor Approved",
       message: `Visitor ${visitorName} approved by ${residentName} (Unit ${unitNumber})`,
       type: "visitor_approved",
+      propertyId,
       relatedId: visitorId,
       isRead: false,
     });
@@ -35,16 +36,12 @@ async function notifyGuardOfApproval(
   }
 }
 
-// =============================================================================
-// MAIN WEBHOOK HANDLER
-// =============================================================================
 export async function POST(request: NextRequest) {
   try {
     console.log("\n" + "=".repeat(70));
     console.log("📨 WhatsApp Webhook Received");
     console.log("=".repeat(70));
 
-    // Parse Twilio webhook data (application/x-www-form-urlencoded)
     const formData = await request.formData();
     const body = Object.fromEntries(formData);
 
@@ -54,24 +51,20 @@ export async function POST(request: NextRequest) {
       MessageSid: body.MessageSid,
     });
 
-    const from = body.From as string; // e.g., "whatsapp:+919311377754"
-    const messageBody = (body.Body as string)?.trim().toUpperCase(); // ✅ Converts to uppercase, so "approve", "Approve", "APPROVE" all work
+    const from = body.From as string;
+    const messageBody = (body.Body as string)?.trim().toUpperCase();
 
     if (!from || !messageBody) {
       console.log("❌ Missing From or Body");
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>Invalid request. Missing phone number or message.</Message>
+  <Message>Invalid request.</Message>
 </Response>`,
-        {
-          headers: { "Content-Type": "text/xml" },
-        }
+        { headers: { "Content-Type": "text/xml" } }
       );
     }
 
-    // Extract phone number from WhatsApp format
-    // "whatsapp:+919311377754" → "9311377754"
     const phoneMatch = from.match(/whatsapp:\+91(\d{10})/);
     if (!phoneMatch) {
       console.log("❌ Invalid phone format:", from);
@@ -80,19 +73,15 @@ export async function POST(request: NextRequest) {
 <Response>
   <Message>Invalid phone number format.</Message>
 </Response>`,
-        {
-          headers: { "Content-Type": "text/xml" },
-        }
+        { headers: { "Content-Type": "text/xml" } }
       );
     }
 
-    const phoneNumber = phoneMatch[1]; // "9311377754"
+    const phoneNumber = phoneMatch[1];
     console.log("📱 Extracted phone:", phoneNumber);
 
-    // Connect to database
     await connectDB();
 
-    // Find resident by phone number
     const resident = await User.findOne({
       phoneNumber,
       role: "resident",
@@ -104,21 +93,17 @@ export async function POST(request: NextRequest) {
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>⚠️ Resident account not found. Please contact support.</Message>
+  <Message>⚠️ Resident account not found.</Message>
 </Response>`,
-        {
-          headers: { "Content-Type": "text/xml" },
-        }
+        { headers: { "Content-Type": "text/xml" } }
       );
     }
 
     console.log("✅ Resident found:", {
       id: resident._id,
       name: resident.fullName || resident.email,
-      phone: resident.phoneNumber,
     });
 
-    // Find the most recent pending visitor for this resident
     const visitor = await Visitor.findOne({
       hostResidentId: resident._id,
       status: "pending",
@@ -127,27 +112,24 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!visitor) {
-      console.log("❌ No pending visitor found for resident:", resident._id);
+      console.log("❌ No pending visitor found");
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>⚠️ No pending visitor requests found. All visitors may already be processed.</Message>
+  <Message>⚠️ No pending visitor requests found.</Message>
 </Response>`,
-        {
-          headers: { "Content-Type": "text/xml" },
-        }
+        { headers: { "Content-Type": "text/xml" } }
       );
     }
 
     console.log("✅ Pending visitor found:", {
       id: visitor._id,
       name: visitor.name,
-      phone: visitor.phoneNumber,
-      purpose: visitor.purpose,
+      phone: visitor.phone,
     });
 
     // =============================================================================
-    // PROCESS APPROVE
+    // APPROVE
     // =============================================================================
     if (
       messageBody === "APPROVE" ||
@@ -155,9 +137,8 @@ export async function POST(request: NextRequest) {
       messageBody === "ACCEPT" ||
       messageBody === "OK"
     ) {
-      console.log("✅ Processing APPROVAL via WhatsApp...");
+      console.log("✅ Processing APPROVAL...");
 
-      // ✅ UPDATE VISITOR STATUS (same as app)
       visitor.status = "approved";
       visitor.approvedBy = resident._id;
       visitor.approvedAt = new Date();
@@ -165,33 +146,29 @@ export async function POST(request: NextRequest) {
 
       console.log("✅ Visitor approved in database");
 
-      // Get property name for better messaging
+      // Get property name
       let propertyName = "the property";
       if (visitor.propertyId) {
         const property = await Property.findById(visitor.propertyId);
-        if (property) {
-          propertyName = property.name;
-        }
+        if (property) propertyName = property.name;
       }
 
-      // ✅ SEND WHATSAPP TO VISITOR (same as app)
+      // ✅ Send WhatsApp to visitor
       const approvalSent = await sendVisitorApprovedWhatsApp(
-        visitor.phoneNumber,
+        visitor.phone,
         visitor.name,
         resident.fullName || resident.email,
-        visitor.hostUnitNumber || "N/A",
-        propertyName
+        visitor.hostUnitNumber || "N/A"
       );
 
       if (approvalSent) {
         console.log("✅ Approval WhatsApp sent to visitor");
       } else {
-        console.log("⚠️ Failed to send approval WhatsApp to visitor");
+        console.log("⚠️ Failed to send approval WhatsApp");
       }
 
-      // ✅ NOTIFY ALL GUARDS AT PROPERTY (same as app)
+      // ✅ Notify guards
       if (visitor.propertyId) {
-        // Find all active guards at this property
         const guards = await User.find({
           role: "guard",
           propertyId: visitor.propertyId,
@@ -201,16 +178,15 @@ export async function POST(request: NextRequest) {
         console.log(`📢 Notifying ${guards.length} guards...`);
 
         for (const guard of guards) {
-          // Send in-app notification
           await notifyGuardOfApproval(
             guard._id.toString(),
             visitor._id.toString(),
             visitor.name,
             resident.fullName || resident.email,
-            visitor.hostUnitNumber || "N/A"
+            visitor.hostUnitNumber || "N/A",
+            visitor.propertyId.toString()
           );
 
-          // Send WhatsApp notification if guard has phone
           if (guard.phoneNumber) {
             await notifyGuardWhatsApp(
               guard.phoneNumber,
@@ -221,30 +197,27 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        console.log("✅ All guards notified (in-app + WhatsApp)");
+        console.log("✅ All guards notified");
       }
 
-      // ✅ SEND CONFIRMATION TO RESIDENT
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>✅ *Visitor Approved Successfully!*
+  <Message>✅ *Visitor Approved!*
 
 *Visitor:* ${visitor.name}
-*Phone:* ${visitor.phoneNumber}
+*Phone:* ${visitor.phone}
 
-The visitor has been notified via WhatsApp and guards have been alerted.
+The visitor has been notified and guards alerted.
 
 Thank you! 🙏</Message>
 </Response>`,
-        {
-          headers: { "Content-Type": "text/xml" },
-        }
+        { headers: { "Content-Type": "text/xml" } }
       );
     }
 
     // =============================================================================
-    // PROCESS REJECT
+    // REJECT
     // =============================================================================
     else if (
       messageBody === "REJECT" ||
@@ -252,9 +225,8 @@ Thank you! 🙏</Message>
       messageBody === "DECLINE" ||
       messageBody === "DENIED"
     ) {
-      console.log("❌ Processing REJECTION via WhatsApp...");
+      console.log("❌ Processing REJECTION...");
 
-      // ✅ UPDATE VISITOR STATUS (same as app)
       visitor.status = "rejected";
       visitor.rejectedBy = resident._id;
       visitor.rejectedAt = new Date();
@@ -263,9 +235,9 @@ Thank you! 🙏</Message>
 
       console.log("✅ Visitor rejected in database");
 
-      // ✅ SEND WHATSAPP TO VISITOR (same as app)
+      // ✅ Send WhatsApp to visitor
       const rejectionSent = await sendVisitorRejectedWhatsApp(
-        visitor.phoneNumber,
+        visitor.phone,
         visitor.name,
         "Declined via WhatsApp"
       );
@@ -273,30 +245,27 @@ Thank you! 🙏</Message>
       if (rejectionSent) {
         console.log("✅ Rejection WhatsApp sent to visitor");
       } else {
-        console.log("⚠️ Failed to send rejection WhatsApp to visitor");
+        console.log("⚠️ Failed to send rejection WhatsApp");
       }
 
-      // ✅ SEND CONFIRMATION TO RESIDENT
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>❌ *Visitor Request Declined*
+  <Message>❌ *Visitor Declined*
 
 *Visitor:* ${visitor.name}
-*Phone:* ${visitor.phoneNumber}
+*Phone:* ${visitor.phone}
 
-The visitor has been notified about the rejection.
+The visitor has been notified.
 
 Thank you! 🙏</Message>
 </Response>`,
-        {
-          headers: { "Content-Type": "text/xml" },
-        }
+        { headers: { "Content-Type": "text/xml" } }
       );
     }
 
     // =============================================================================
-    // INVALID RESPONSE
+    // INVALID
     // =============================================================================
     else {
       console.log("⚠️ Invalid response:", messageBody);
@@ -305,18 +274,13 @@ Thank you! 🙏</Message>
 <Response>
   <Message>⚠️ *Invalid Response*
 
-You have a pending visitor request from:
-*${visitor.name}* (${visitor.phoneNumber})
+Pending visitor: *${visitor.name}* (${visitor.phone})
 
-Please reply with one of these:
-✅ *APPROVE* - to allow entry
-❌ *REJECT* - to decline
-
-You can also use the VMS app.</Message>
+Reply with:
+✅ *APPROVE* - to allow
+❌ *REJECT* - to decline</Message>
 </Response>`,
-        {
-          headers: { "Content-Type": "text/xml" },
-        }
+        { headers: { "Content-Type": "text/xml" } }
       );
     }
   } catch (error: any) {
@@ -324,24 +288,16 @@ You can also use the VMS app.</Message>
     return new NextResponse(
       `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>⚠️ An error occurred processing your request. Please try again or use the VMS app.</Message>
+  <Message>⚠️ Error occurred. Please use the VMS app.</Message>
 </Response>`,
-      {
-        status: 500,
-        headers: { "Content-Type": "text/xml" },
-      }
+      { status: 500, headers: { "Content-Type": "text/xml" } }
     );
   }
 }
 
-// =============================================================================
-// GET handler for testing
-// =============================================================================
 export async function GET() {
   return NextResponse.json({
     message: "WhatsApp Webhook is active",
     endpoint: "/api/webhooks/whatsapp",
-    method: "POST",
-    description: "Handles APPROVE/REJECT responses from residents via WhatsApp",
   });
 }
