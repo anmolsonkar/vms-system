@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Card from "../shared/Card";
 import Badge from "../shared/Badge";
 import LoadingSpinner from "../shared/LoadingSpinner";
@@ -44,19 +44,13 @@ export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
-
-  const fetchAnalytics = async () => {
-    setLoading(true);
+  const fetchAnalytics = useCallback(async () => {
     setError(null);
 
     try {
       const response = await axios.get("/api/superadmin/analytics");
 
       if (response.data.success) {
-        // Map the API response to match our interface
         const apiData = response.data.data;
 
         setAnalytics({
@@ -88,7 +82,18 @@ export default function AnalyticsDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  // ✅ REAL-TIME POLLING - Refresh every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchAnalytics, 10000);
+    return () => clearInterval(interval);
+  }, [fetchAnalytics]);
 
   if (loading) {
     return <LoadingSpinner text="Loading analytics..." />;
