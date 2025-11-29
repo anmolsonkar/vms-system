@@ -43,13 +43,13 @@ export default function ManualEntryForm() {
 
   const [formData, setFormData] = useState<VisitorFormData>({
     name: "",
-    phone: "",
+    phone: "7055877416",
     purpose: "",
     residentId: "",
     unitNumber: "",
     vehicleNumber: "",
     idPhoto: null,
-    otpVerified: false,
+    otpVerified: true,
   });
 
   const [selectedResident, setSelectedResident] = useState<Resident | null>(
