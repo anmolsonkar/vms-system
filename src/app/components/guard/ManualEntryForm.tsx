@@ -43,13 +43,13 @@ export default function ManualEntryForm() {
 
   const [formData, setFormData] = useState<VisitorFormData>({
     name: "",
-    phone: "7055877416",
+    phone: "",
     purpose: "",
     residentId: "",
     unitNumber: "",
     vehicleNumber: "",
     idPhoto: null,
-    otpVerified: true,
+    otpVerified: false,
   });
 
   const [selectedResident, setSelectedResident] = useState<Resident | null>(
@@ -273,7 +273,6 @@ export default function ManualEntryForm() {
   };
 
   // Form Submission
-  // Add this function at the top of your component, before handleSubmit
   const capitalizeWords = (str: string): string => {
     if (!str) return "";
     return str
@@ -308,9 +307,9 @@ export default function ManualEntryForm() {
       setLoading(true);
 
       const visitorData = {
-        name: capitalizeWords(formData.name), // ← CHANGED
+        name: capitalizeWords(formData.name),
         phone: formData.phone,
-        purpose: capitalizeWords(formData.purpose), // ← CHANGED
+        purpose: capitalizeWords(formData.purpose),
         hostResidentId: formData.residentId,
         vehicleNumber: formData.vehicleNumber || undefined,
         idCardImageUrl:
@@ -361,29 +360,30 @@ export default function ManualEntryForm() {
       setLoading(false);
     }
   };
+
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+    <div className="w-full max-w-2xl mx-auto p-4 sm:p-6">
+      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
           Walk-in Visitor Entry
         </h2>
 
         {/* Alerts */}
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg flex items-start gap-2 text-sm">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
-            <Check className="w-5 h-5 flex-shrink-0" />
+          <div className="mb-4 bg-green-50 border border-green-200 text-green-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg flex items-start gap-2 text-sm">
+            <Check className="w-5 h-5 shrink-0 mt-0.5" />
             <span>{success}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Visitor Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -395,7 +395,7 @@ export default function ManualEntryForm() {
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
               placeholder="Enter visitor name"
               required
             />
@@ -418,8 +418,8 @@ export default function ManualEntryForm() {
                     otpVerified: false,
                   });
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="10-digit phone number"
+                className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                placeholder="10-digit number"
                 maxLength={10}
                 required
                 disabled={formData.otpVerified}
@@ -429,14 +429,15 @@ export default function ManualEntryForm() {
                   type="button"
                   onClick={sendOTP}
                   disabled={formData.phone.length !== 10 || otpLoading}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  className="px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-sm sm:text-base"
                 >
                   {otpLoading ? "Sending..." : "Send OTP"}
                 </button>
               ) : (
-                <div className="px-4 py-2 bg-green-50 text-green-700 rounded-lg flex items-center gap-2 whitespace-nowrap">
-                  <Check className="w-5 h-5" />
-                  Verified
+                <div className="px-3 sm:px-4 py-2 bg-green-50 text-green-700 rounded-lg flex items-center gap-2 whitespace-nowrap text-sm">
+                  <Check className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Verified</span>
+                  <span className="sm:hidden">✓</span>
                 </div>
               )}
             </div>
@@ -449,20 +450,22 @@ export default function ManualEntryForm() {
             </label>
             <div
               onClick={openResidentSelector}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition-colors bg-white"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition-colors bg-white"
             >
               {selectedResident ? (
                 <div>
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-gray-900 text-sm sm:text-base">
                     {selectedResident.fullName}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs sm:text-sm text-gray-500 mt-0.5">
                     Unit {selectedResident.unitNumber} •{" "}
                     {selectedResident.phoneNumber}
                   </div>
                 </div>
               ) : (
-                <div className="text-gray-400">Click to select resident</div>
+                <div className="text-gray-400 text-sm sm:text-base">
+                  Click to select resident
+                </div>
               )}
             </div>
           </div>
@@ -477,7 +480,7 @@ export default function ManualEntryForm() {
                 type="text"
                 value={formData.unitNumber}
                 readOnly
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm sm:text-base"
               />
             </div>
           )}
@@ -492,9 +495,9 @@ export default function ManualEntryForm() {
               onChange={(e) =>
                 setFormData({ ...formData, purpose: e.target.value })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
               rows={3}
-              placeholder="Enter purpose of visit (e.g., Personal visit, Delivery, Business meeting)"
+              placeholder="Enter purpose of visit"
               required
             />
           </div>
@@ -513,12 +516,12 @@ export default function ManualEntryForm() {
                   vehicleNumber: e.target.value.toUpperCase(),
                 })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
               placeholder="e.g., DL01AB1234"
             />
           </div>
 
-          {/* ID Photo Capture - Optional */}
+          {/* ID Photo Capture */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Visitor ID Photo (Optional)
@@ -531,8 +534,10 @@ export default function ManualEntryForm() {
                   onClick={startCamera}
                   className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-purple-600"
                 >
-                  <Camera className="w-6 h-6" />
-                  <span className="font-medium">Capture ID Photo</span>
+                  <Camera className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="font-medium text-sm sm:text-base">
+                    Capture ID Photo
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -543,14 +548,14 @@ export default function ManualEntryForm() {
                 </button>
               </div>
             ) : formData.idPhoto === "skipped" ? (
-              <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg">
-                <p className="text-sm text-gray-600 mb-2">
+              <div className="p-3 sm:p-4 bg-gray-50 border border-gray-300 rounded-lg">
+                <p className="text-xs sm:text-sm text-gray-600 mb-2">
                   Photo skipped - continuing without visitor photo
                 </p>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, idPhoto: null })}
-                  className="text-sm text-purple-600 hover:text-purple-700 underline"
+                  className="text-xs sm:text-sm text-purple-600 hover:text-purple-700 underline"
                 >
                   Add Photo Instead
                 </button>
@@ -563,25 +568,25 @@ export default function ManualEntryForm() {
                     alt="Captured ID"
                     className="w-full h-auto"
                   />
-                  <div className="absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-                    <Check className="w-4 h-4" />
+                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1">
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4" />
                     Captured
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={retakePhoto}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
                   >
-                    Retake Photo
+                    Retake
                   </button>
                   <button
                     type="button"
                     onClick={skipPhoto}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
                   >
-                    Remove Photo
+                    Remove
                   </button>
                 </div>
               </div>
@@ -592,7 +597,7 @@ export default function ManualEntryForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg"
+            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-base sm:text-lg"
           >
             {loading ? "Sending Request..." : "Send Approval Request"}
           </button>
@@ -602,16 +607,16 @@ export default function ManualEntryForm() {
       {/* Camera Modal */}
       {showCamera && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900">
                 Capture ID Photo
               </h3>
               <button
                 onClick={stopCamera}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
@@ -625,21 +630,21 @@ export default function ManualEntryForm() {
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={stopCamera}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={capturePhoto}
-                  className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                  className="px-3 sm:px-4 py-2 sm:py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
-                  <Camera className="w-5 h-5" />
-                  Capture Photo
+                  <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Capture
                 </button>
               </div>
             </div>
@@ -652,33 +657,33 @@ export default function ManualEntryForm() {
       {/* Resident Selector Modal */}
       {showResidentSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-bold text-gray-900">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] sm:max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900">
                 Select Resident
               </h3>
               <button
                 onClick={() => setShowResidentSelector(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
-            <div className="p-4 border-b">
+            <div className="p-3 sm:p-4 border-b">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, unit, or phone..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
                 autoFocus
               />
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4">
               {filteredResidents.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
                   No residents found
                 </div>
               ) : (
@@ -688,15 +693,15 @@ export default function ManualEntryForm() {
                       key={resident._id}
                       type="button"
                       onClick={() => selectResident(resident)}
-                      className="w-full p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-left"
+                      className="w-full p-3 sm:p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-left"
                     >
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-gray-900 text-sm sm:text-base">
                         {resident.fullName}
                       </div>
-                      <div className="text-sm text-gray-500 mt-1">
+                      <div className="text-xs sm:text-sm text-gray-500 mt-1">
                         Unit {resident.unitNumber}
                       </div>
-                      <div className="text-sm text-gray-400 mt-1">
+                      <div className="text-xs sm:text-sm text-gray-400 mt-1">
                         {resident.phoneNumber} • {resident.email}
                       </div>
                     </button>
@@ -711,22 +716,24 @@ export default function ManualEntryForm() {
       {/* OTP Verification Modal */}
       {showOTPModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg max-w-md w-full p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Verify OTP</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900">
+                Verify OTP
+              </h3>
               <button
                 onClick={() => setShowOTPModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-xs sm:text-sm text-gray-600 mb-4">
               Enter the 6-digit OTP sent to <strong>{formData.phone}</strong>
             </p>
 
-            <div className="flex justify-center space-x-3 mb-4">
+            <div className="flex justify-center gap-2 sm:gap-3 mb-4">
               {otp.map((digit, index) => (
                 <input
                   key={index}
@@ -739,19 +746,19 @@ export default function ManualEntryForm() {
                   value={digit}
                   onChange={(e) => handleOTPChange(index, e.target.value)}
                   onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                  className="w-12 h-12 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-10 h-10 sm:w-12 sm:h-12 text-center text-lg sm:text-xl font-semibold border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               ))}
             </div>
 
             {resendTimer > 0 ? (
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-center text-xs sm:text-sm text-gray-500">
                 Resend OTP in <strong>{resendTimer}s</strong>
               </p>
             ) : (
               <button
                 onClick={handleResendOTP}
-                className="w-full text-sm text-purple-600 hover:text-purple-700 font-medium"
+                className="w-full text-xs sm:text-sm text-purple-600 hover:text-purple-700 font-medium"
               >
                 Resend OTP
               </button>
