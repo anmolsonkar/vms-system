@@ -691,11 +691,13 @@ export default function ManualEntryForm() {
                   className="w-full h-auto"
                   style={{ transform: "scaleX(-1)" }}
                 />
-                
+
                 {/* Loading overlay */}
                 {!cameraReady && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-75">
-                    <div className="text-white text-sm">Initializing camera...</div>
+                    <div className="text-white text-sm">
+                      Initializing camera...
+                    </div>
                   </div>
                 )}
 
@@ -712,7 +714,8 @@ export default function ManualEntryForm() {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
-                  📸 Position the visitor's face in the center and click "Capture"
+                  📸 Position the visitor's face in the center and click
+                  "Capture"
                 </p>
               </div>
 
