@@ -114,33 +114,62 @@ export default function ManualEntryForm() {
   const startCamera = async () => {
     try {
       setCameraReady(false);
+      setShowCamera(true);
+
+      // Small delay to ensure modal is rendered
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: 1280, height: 720 },
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
       });
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setCameraStream(stream);
-        setShowCamera(true);
 
-        // Wait for video to be ready
+        // Wait for video metadata to load
         videoRef.current.onloadedmetadata = () => {
           if (videoRef.current) {
             videoRef.current
               .play()
               .then(() => {
+                console.log("✅ Camera started successfully");
                 setCameraReady(true);
               })
               .catch((err) => {
-                console.error("Video play error:", err);
+                console.error("❌ Video play error:", err);
                 setError("Failed to start camera preview");
+                stopCamera();
               });
           }
         };
+
+        // Fallback: Set ready after 2 seconds if metadata doesn't load
+        setTimeout(() => {
+          if (videoRef.current && videoRef.current.readyState >= 2) {
+            setCameraReady(true);
+          }
+        }, 2000);
       }
-    } catch (err) {
-      console.error("Camera error:", err);
-      setError("Failed to access camera. Please check permissions.");
+    } catch (err: any) {
+      console.error("❌ Camera error:", err);
+
+      let errorMessage = "Failed to access camera.";
+      if (err.name === "NotAllowedError") {
+        errorMessage =
+          "Camera permission denied. Please allow camera access in your browser settings.";
+      } else if (err.name === "NotFoundError") {
+        errorMessage = "No camera found on this device.";
+      } else if (err.name === "NotReadableError") {
+        errorMessage = "Camera is already in use by another application.";
+      }
+
+      setError(errorMessage);
+      setShowCamera(false);
     }
   };
 
@@ -157,34 +186,54 @@ export default function ManualEntryForm() {
   };
 
   const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
+    if (!videoRef.current || !canvasRef.current) {
+      setError("Camera not ready. Please try again.");
+      return;
+    }
 
-      if (!cameraReady || video.readyState < 2) {
-        setError("Camera is still loading. Please wait.");
-        return;
-      }
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    // Check if video is ready
+    if (!cameraReady || video.readyState < 2) {
+      setError("Camera is still loading. Please wait a moment.");
+      return;
+    }
+
+    try {
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      console.log(`📸 Capturing photo: ${canvas.width}x${canvas.height}`);
 
       const context = canvas.getContext("2d");
 
-      if (context) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        // Mirror effect
+      if (context && canvas.width > 0 && canvas.height > 0) {
+        // Mirror effect for selfie
         context.save();
         context.scale(-1, 1);
         context.translate(-canvas.width, 0);
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         context.restore();
 
+        // Convert to base64
         const imageData = canvas.toDataURL("image/jpeg", 0.8);
-        setFormData({ ...formData, idPhoto: imageData });
-        stopCamera();
-        setSuccess("ID photo captured successfully!");
-        setTimeout(() => setSuccess(null), 3000);
+
+        if (imageData && imageData.length > 100) {
+          setFormData({ ...formData, idPhoto: imageData });
+          stopCamera();
+          setSuccess("Photo captured successfully!");
+          setTimeout(() => setSuccess(null), 3000);
+        } else {
+          setError("Failed to capture photo. Please try again.");
+        }
+      } else {
+        setError("Camera dimensions not valid. Please try again.");
       }
+    } catch (err) {
+      console.error("❌ Capture error:", err);
+      setError("Failed to capture photo. Please try again.");
     }
   };
 
@@ -682,21 +731,33 @@ export default function ManualEntryForm() {
             </div>
 
             <div className="space-y-4">
-              <div className="relative rounded-lg overflow-hidden bg-black">
+              {/* Video Preview Container */}
+              <div
+                className="relative rounded-lg overflow-hidden bg-black"
+                style={{ minHeight: "400px" }}
+              >
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
-                  className="w-full h-auto"
-                  style={{ transform: "scaleX(-1)" }}
+                  className="w-full h-auto object-cover"
+                  style={{
+                    transform: "scaleX(-1)",
+                    display: "block",
+                    minHeight: "400px",
+                  }}
                 />
 
                 {/* Loading overlay */}
                 {!cameraReady && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-75">
-                    <div className="text-white text-sm">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+                    <div className="text-white text-sm font-medium">
                       Initializing camera...
+                    </div>
+                    <div className="text-gray-300 text-xs mt-2">
+                      Please allow camera access if prompted
                     </div>
                   </div>
                 )}
@@ -715,7 +776,7 @@ export default function ManualEntryForm() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
                   📸 Position the visitor's face in the center and click
-                  "Capture"
+                  "Capture Photo"
                 </p>
               </div>
 
@@ -734,7 +795,7 @@ export default function ManualEntryForm() {
                   className="px-3 sm:px-4 py-2 sm:py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {cameraReady ? "Capture" : "Loading..."}
+                  {cameraReady ? "Capture Photo" : "Loading..."}
                 </button>
               </div>
             </div>
