@@ -110,20 +110,20 @@ export default function ManualEntryForm() {
     }
   };
 
-  // Camera Functions
+  // Camera Functions - REAR CAMERA
   const startCamera = async () => {
     try {
       setCameraReady(false);
       setShowCamera(true);
-
+      
       // Small delay to ensure modal is rendered
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+        video: { 
+          facingMode: "environment", // ✅ Rear camera (back camera)
+          width: { ideal: 1280 }, 
+          height: { ideal: 720 } 
         },
       });
 
@@ -157,17 +157,16 @@ export default function ManualEntryForm() {
       }
     } catch (err: any) {
       console.error("❌ Camera error:", err);
-
+      
       let errorMessage = "Failed to access camera.";
       if (err.name === "NotAllowedError") {
-        errorMessage =
-          "Camera permission denied. Please allow camera access in your browser settings.";
+        errorMessage = "Camera permission denied. Please allow camera access in your browser settings.";
       } else if (err.name === "NotFoundError") {
         errorMessage = "No camera found on this device.";
       } else if (err.name === "NotReadableError") {
         errorMessage = "Camera is already in use by another application.";
       }
-
+      
       setError(errorMessage);
       setShowCamera(false);
     }
@@ -210,16 +209,12 @@ export default function ManualEntryForm() {
       const context = canvas.getContext("2d");
 
       if (context && canvas.width > 0 && canvas.height > 0) {
-        // Mirror effect for selfie
-        context.save();
-        context.scale(-1, 1);
-        context.translate(-canvas.width, 0);
+        // ✅ No mirror effect for rear camera - direct draw
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        context.restore();
 
         // Convert to base64
         const imageData = canvas.toDataURL("image/jpeg", 0.8);
-
+        
         if (imageData && imageData.length > 100) {
           setFormData({ ...formData, idPhoto: imageData });
           stopCamera();
@@ -731,11 +726,8 @@ export default function ManualEntryForm() {
             </div>
 
             <div className="space-y-4">
-              {/* Video Preview Container */}
-              <div
-                className="relative rounded-lg overflow-hidden bg-black"
-                style={{ minHeight: "400px" }}
-              >
+              {/* Video Preview Container - NO MIRROR EFFECT */}
+              <div className="relative rounded-lg overflow-hidden bg-black" style={{ minHeight: "400px" }}>
                 <video
                   ref={videoRef}
                   autoPlay
@@ -743,22 +735,17 @@ export default function ManualEntryForm() {
                   muted
                   className="w-full h-auto object-cover"
                   style={{
-                    transform: "scaleX(-1)",
                     display: "block",
                     minHeight: "400px",
                   }}
                 />
-
+                
                 {/* Loading overlay */}
                 {!cameraReady && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-75">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-                    <div className="text-white text-sm font-medium">
-                      Initializing camera...
-                    </div>
-                    <div className="text-gray-300 text-xs mt-2">
-                      Please allow camera access if prompted
-                    </div>
+                    <div className="text-white text-sm font-medium">Initializing camera...</div>
+                    <div className="text-gray-300 text-xs mt-2">Please allow camera access if prompted</div>
                   </div>
                 )}
 
@@ -775,8 +762,7 @@ export default function ManualEntryForm() {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
-                  📸 Position the visitor's face in the center and click
-                  "Capture Photo"
+                  📸 Position the visitor in the center and click "Capture Photo"
                 </p>
               </div>
 
