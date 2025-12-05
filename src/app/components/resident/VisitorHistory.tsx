@@ -262,14 +262,6 @@ export default function VisitorHistory() {
                           <strong>Note:</strong> {visitor.forwardingNote}
                         </p>
                       )}
-                      {visitor.forwardedAt && (
-                        <p className="text-xs text-blue-600 mt-1">
-                          {format(
-                            new Date(visitor.forwardedAt),
-                            "MMM dd, yyyy HH:mm"
-                          )}
-                        </p>
-                      )}
                     </div>
                   )}
 
