@@ -22,9 +22,14 @@ export async function GET(request: NextRequest) {
     const userId = user!.id;
     console.log("🔍 Fetching visitor history for resident:", userId);
 
-    // Build query - use user ID directly
+    // ✅ FIXED: Build query to include visitors where user is either:
+    // 1. Current host (hostResidentId matches)
+    // 2. Original sender who forwarded (forwardedFrom matches)
     const query: any = {
-      hostResidentId: userId,
+      $or: [
+        { hostResidentId: userId },
+        { forwardedFrom: userId },
+      ],
     };
 
     if (status && status !== "all") {
@@ -34,8 +39,10 @@ export async function GET(request: NextRequest) {
     // Get total count
     const total = await Visitor.countDocuments(query);
 
-    // Get visitors with pagination
+    // Get visitors with pagination and populate forwarding fields
     const visitors = await Visitor.find(query)
+      .populate("forwardedFrom", "fullName unitNumber email phoneNumber")
+      .populate("forwardedTo", "fullName unitNumber email phoneNumber")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
