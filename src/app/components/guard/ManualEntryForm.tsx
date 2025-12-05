@@ -19,6 +19,8 @@ interface VisitorFormData {
   unitNumber: string;
   vehicleNumber: string;
   idPhoto: string | null;
+  assetPhoto: string | null; // ✅ NEW: Asset capture
+  assetDescription: string; // ✅ NEW: Asset description
   otpVerified: boolean;
 }
 
@@ -30,6 +32,7 @@ export default function ManualEntryForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [cameraMode, setCameraMode] = useState<"id" | "asset">("id"); // ✅ NEW: Track camera mode
   const [showResidentSelector, setShowResidentSelector] = useState(false);
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -43,13 +46,15 @@ export default function ManualEntryForm() {
 
   const [formData, setFormData] = useState<VisitorFormData>({
     name: "",
-    phone: "",
+    phone: "7055877416",
     purpose: "",
     residentId: "",
     unitNumber: "",
     vehicleNumber: "",
     idPhoto: null,
-    otpVerified: false,
+    assetPhoto: null,
+    assetDescription: "",
+    otpVerified: true,
   });
 
   const [selectedResident, setSelectedResident] = useState<Resident | null>(
@@ -85,12 +90,15 @@ export default function ManualEntryForm() {
     }
   }, [resendTimer]);
 
-  // Cleanup camera on unmount
+  // ✅ FIX: Cleanup camera on unmount and when modal closes
   useEffect(() => {
+    if (!showCamera) {
+      stopCamera();
+    }
     return () => {
       stopCamera();
     };
-  }, []);
+  }, [showCamera]);
 
   const fetchResidents = async () => {
     try {
@@ -109,57 +117,103 @@ export default function ManualEntryForm() {
     }
   };
 
-  // Camera Functions
-  const startCamera = async () => {
+  // ✅ FIX: Camera Functions with proper error handling
+  const startCamera = async (mode: "id" | "asset") => {
     try {
+      setCameraMode(mode);
+
+      // Stop any existing stream first
+      stopCamera();
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: 1280, height: 720 },
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
       });
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+
+        // ✅ FIX: Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+        };
+
         setCameraStream(stream);
         setShowCamera(true);
       }
     } catch (err) {
       console.error("Camera error:", err);
-      setError("Failed to access camera. Please check permissions.");
+      setError(
+        "Failed to access camera. Please check permissions and try again."
+      );
+      stopCamera();
     }
   };
 
   const stopCamera = () => {
     if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop());
+      cameraStream.getTracks().forEach((track) => {
+        track.stop();
+      });
       setCameraStream(null);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     setShowCamera(false);
   };
 
+  // ✅ FIX: Capture photo with proper canvas handling
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext("2d");
 
-      if (context) {
+      if (context && video.readyState === video.HAVE_ENOUGH_DATA) {
+        // Set canvas dimensions to match video
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+
+        // Draw the video frame to canvas
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert to base64
         const imageData = canvas.toDataURL("image/jpeg", 0.8);
-        setFormData({ ...formData, idPhoto: imageData });
+
+        if (cameraMode === "id") {
+          setFormData({ ...formData, idPhoto: imageData });
+          setSuccess("ID photo captured successfully!");
+        } else {
+          setFormData({ ...formData, assetPhoto: imageData });
+          setSuccess("Asset photo captured successfully!");
+        }
+
         stopCamera();
-        setSuccess("ID photo captured successfully!");
         setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError("Video not ready. Please try again.");
       }
     }
   };
 
-  const retakePhoto = () => {
-    setFormData({ ...formData, idPhoto: null });
+  const retakePhoto = (type: "id" | "asset") => {
+    if (type === "id") {
+      setFormData({ ...formData, idPhoto: null });
+    } else {
+      setFormData({ ...formData, assetPhoto: null });
+    }
   };
 
-  const skipPhoto = () => {
-    setFormData({ ...formData, idPhoto: "skipped" });
+  const skipPhoto = (type: "id" | "asset") => {
+    if (type === "id") {
+      setFormData({ ...formData, idPhoto: "skipped" });
+    } else {
+      setFormData({ ...formData, assetPhoto: "skipped" });
+    }
   };
 
   // Resident Selection
@@ -320,6 +374,12 @@ export default function ManualEntryForm() {
           formData.idPhoto && formData.idPhoto !== "skipped"
             ? formData.idPhoto
             : undefined,
+        // ✅ NEW: Asset photo
+        assetPhotoUrl:
+          formData.assetPhoto && formData.assetPhoto !== "skipped"
+            ? formData.assetPhoto
+            : undefined,
+        assetDescription: formData.assetDescription || undefined, // ✅ NEW: Asset description
         isWalkIn: true,
         phoneVerified: true,
       };
@@ -344,6 +404,8 @@ export default function ManualEntryForm() {
           unitNumber: "",
           vehicleNumber: "",
           idPhoto: null,
+          assetPhoto: null,
+          assetDescription: "",
           otpVerified: false,
         });
         setSelectedResident(null);
@@ -531,7 +593,7 @@ export default function ManualEntryForm() {
               <div className="space-y-3">
                 <button
                   type="button"
-                  onClick={startCamera}
+                  onClick={() => startCamera("id")}
                   className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-purple-600"
                 >
                   <Camera className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -541,7 +603,7 @@ export default function ManualEntryForm() {
                 </button>
                 <button
                   type="button"
-                  onClick={skipPhoto}
+                  onClick={() => skipPhoto("id")}
                   className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
                 >
                   Skip Photo (Continue without photo)
@@ -576,14 +638,14 @@ export default function ManualEntryForm() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={retakePhoto}
+                    onClick={() => retakePhoto("id")}
                     className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
                   >
                     Retake
                   </button>
                   <button
                     type="button"
-                    onClick={skipPhoto}
+                    onClick={() => skipPhoto("id")}
                     className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
                   >
                     Remove
@@ -592,6 +654,100 @@ export default function ManualEntryForm() {
               </div>
             )}
           </div>
+
+          {/* ✅ NEW: Asset Photo Capture */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Asset Photo (Optional)
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Capture photo of items/assets visitor is carrying (laptop, bags,
+              equipment, etc.)
+            </p>
+
+            {!formData.assetPhoto ? (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => startCamera("asset")}
+                  className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-purple-600"
+                >
+                  <Camera className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="font-medium text-sm sm:text-base">
+                    Capture Asset Photo
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => skipPhoto("asset")}
+                  className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
+                >
+                  Skip Asset Photo
+                </button>
+              </div>
+            ) : formData.assetPhoto === "skipped" ? (
+              <div className="p-3 sm:p-4 bg-gray-50 border border-gray-300 rounded-lg">
+                <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                  Asset photo skipped
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, assetPhoto: null })}
+                  className="text-xs sm:text-sm text-purple-600 hover:text-purple-700 underline"
+                >
+                  Add Photo Instead
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="relative rounded-lg overflow-hidden border-2 border-green-500">
+                  <img
+                    src={formData.assetPhoto}
+                    alt="Captured Asset"
+                    className="w-full h-auto"
+                  />
+                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1">
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                    Captured
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => retakePhoto("asset")}
+                    className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    Retake
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => skipPhoto("asset")}
+                    className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ✅ NEW: Asset Description (only show if asset photo is captured) */}
+          {formData.assetPhoto && formData.assetPhoto !== "skipped" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Asset Description
+              </label>
+              <input
+                type="text"
+                value={formData.assetDescription}
+                onChange={(e) =>
+                  setFormData({ ...formData, assetDescription: e.target.value })
+                }
+                className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                placeholder="e.g., Laptop, Toolbox, Camera Equipment"
+              />
+            </div>
+          )}
 
           {/* Submit Button */}
           <button
@@ -610,7 +766,9 @@ export default function ManualEntryForm() {
           <div className="bg-white rounded-lg max-w-2xl w-full p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900">
-                Capture ID Photo
+                {cameraMode === "id"
+                  ? "Capture ID Photo"
+                  : "Capture Asset Photo"}
               </h3>
               <button
                 onClick={stopCamera}
@@ -626,6 +784,7 @@ export default function ManualEntryForm() {
                   ref={videoRef}
                   autoPlay
                   playsInline
+                  muted
                   className="w-full h-auto"
                 />
               </div>

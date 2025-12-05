@@ -9,6 +9,8 @@ export interface IVisitor extends Document {
   idCardNumber?: string;
   idCardImageUrl?: string;
   photoUrl: string;
+  assetPhotoUrl?: string; // ✅ NEW: Asset photo
+  assetDescription?: string; // ✅ NEW: Asset description
   purpose: string;
   hostResidentId: mongoose.Types.ObjectId;
   vehicleNumber?: string;
@@ -30,6 +32,12 @@ export interface IVisitor extends Document {
   otp?: string;
   otpExpiry?: Date;
   otpVerified: boolean;
+  // ✅ NEW: Forwarding fields
+  forwardedFrom?: mongoose.Types.ObjectId;
+  forwardedTo?: mongoose.Types.ObjectId;
+  forwardedAt?: Date;
+  isForwarded: boolean;
+  forwardingNote?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -77,13 +85,22 @@ const VisitorSchema = new Schema<IVisitor>(
       required: [true, "Visitor photo is required"],
     },
 
+    // ✅ NEW: Asset capture fields
+    assetPhotoUrl: {
+      type: String,
+    },
+
+    assetDescription: {
+      type: String,
+      trim: true,
+    },
+
     purpose: {
       type: String,
       required: [true, "Purpose of visit is required"],
       trim: true,
     },
 
-    // ✅ CHANGED FROM Resident → User
     hostResidentId: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -139,7 +156,6 @@ const VisitorSchema = new Schema<IVisitor>(
       type: Date,
     },
 
-    // ✅ CHANGED FROM Resident → User
     markedExitBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -180,6 +196,31 @@ const VisitorSchema = new Schema<IVisitor>(
       type: Boolean,
       default: false,
     },
+
+    // ✅ NEW: Forwarding fields
+    forwardedFrom: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    forwardedTo: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    forwardedAt: {
+      type: Date,
+    },
+
+    isForwarded: {
+      type: Boolean,
+      default: false,
+    },
+
+    forwardingNote: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
@@ -192,6 +233,7 @@ VisitorSchema.index({ hostResidentId: 1, status: 1 });
 VisitorSchema.index({ phone: 1 });
 VisitorSchema.index({ createdAt: -1 });
 VisitorSchema.index({ checkInTime: 1, status: 1 });
+VisitorSchema.index({ forwardedTo: 1, status: 1 }); // ✅ NEW: Index for forwarded visitors
 
 const Visitor: Model<IVisitor> =
   mongoose.models.Visitor || mongoose.model<IVisitor>("Visitor", VisitorSchema);

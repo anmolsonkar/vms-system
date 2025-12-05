@@ -6,9 +6,17 @@ import Badge from "../shared/Badge";
 import Button from "../shared/Button";
 import Select from "../shared/Select";
 import LoadingSpinner from "../shared/LoadingSpinner";
+import Modal from "../shared/Modal";
 import ExitButton from "./ExitButton";
 import { format } from "date-fns";
-import { User, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  User,
+  ChevronLeft,
+  ChevronRight,
+  Forward,
+  Package,
+  Image as ImageIcon,
+} from "lucide-react";
 import axios from "axios";
 import {
   VISITOR_STATUS_LABELS,
@@ -20,6 +28,8 @@ interface Visitor {
   name: string;
   phone?: string;
   photoUrl: string;
+  assetPhotoUrl?: string; // ✅ NEW
+  assetDescription?: string; // ✅ NEW
   purpose: string;
   status: string;
   vehicleNumber?: string;
@@ -27,6 +37,19 @@ interface Visitor {
   checkInTime?: string;
   approvedAt?: string;
   rejectedAt?: string;
+  isForwarded?: boolean; // ✅ NEW
+  forwardedFrom?: {
+    _id: string;
+    fullName: string;
+    unitNumber: string;
+  }; // ✅ NEW
+  forwardedTo?: {
+    _id: string;
+    fullName: string;
+    unitNumber: string;
+  }; // ✅ NEW
+  forwardingNote?: string; // ✅ NEW
+  forwardedAt?: string; // ✅ NEW
 }
 
 export default function VisitorHistory() {
@@ -35,6 +58,15 @@ export default function VisitorHistory() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // ✅ NEW: Modal states
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showAssetModal, setShowAssetModal] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState("");
+  const [selectedAsset, setSelectedAsset] = useState<{
+    photo: string;
+    description: string;
+  } | null>(null);
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -73,6 +105,19 @@ export default function VisitorHistory() {
       default:
         return "default";
     }
+  };
+
+  const handleViewPhoto = (photoUrl: string) => {
+    setSelectedPhoto(photoUrl);
+    setShowPhotoModal(true);
+  };
+
+  const handleViewAsset = (assetPhotoUrl: string, assetDescription: string) => {
+    setSelectedAsset({
+      photo: assetPhotoUrl,
+      description: assetDescription,
+    });
+    setShowAssetModal(true);
   };
 
   if (loading) {
@@ -125,12 +170,17 @@ export default function VisitorHistory() {
           {visitors.map((visitor) => (
             <Card key={visitor._id} hover>
               <div className="flex gap-3 sm:gap-4">
-                {/* Photo - Left aligned */}
-                <img
-                  src={visitor.photoUrl}
-                  alt={visitor.name}
-                  className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover border-2 border-gray-200 shrink-0"
-                />
+                {/* Photo - Left aligned with click handler */}
+                <div
+                  className="shrink-0 cursor-pointer"
+                  onClick={() => handleViewPhoto(visitor.photoUrl)}
+                >
+                  <img
+                    src={visitor.photoUrl}
+                    alt={visitor.name}
+                    className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover border-2 border-gray-200 hover:border-purple-400 transition-colors"
+                  />
+                </div>
 
                 {/* Details - Right side, takes remaining space */}
                 <div className="flex-1 min-w-0 space-y-2">
@@ -139,17 +189,44 @@ export default function VisitorHistory() {
                       <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                         {visitor.name}
                       </h3>
-                      <Badge
-                        variant={getStatusBadgeVariant(visitor.status)}
-                        size="sm"
-                        className="mt-1"
-                      >
-                        {
-                          VISITOR_STATUS_LABELS[
-                            visitor.status as keyof typeof VISITOR_STATUS_LABELS
-                          ]
-                        }
-                      </Badge>
+
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <Badge
+                          variant={getStatusBadgeVariant(visitor.status)}
+                          size="sm"
+                        >
+                          {
+                            VISITOR_STATUS_LABELS[
+                              visitor.status as keyof typeof VISITOR_STATUS_LABELS
+                            ]
+                          }
+                        </Badge>
+
+                        {/* ✅ NEW: Forwarded From Badge */}
+                        {visitor.isForwarded && visitor.forwardedFrom && (
+                          <Badge variant="info" size="sm">
+                            <Forward className="h-3 w-3 mr-1" />
+                            From {visitor.forwardedFrom.fullName}
+                          </Badge>
+                        )}
+
+                        {/* ✅ NEW: Forwarded To Badge */}
+                        {visitor.isForwarded && visitor.forwardedTo && (
+                          <Badge variant="info" size="sm">
+                            <Forward className="h-3 w-3 mr-1" />
+                            To {visitor.forwardedTo.fullName}
+                          </Badge>
+                        )}
+
+                        {/* ✅ NEW: Asset Badge */}
+                        {visitor.assetPhotoUrl && (
+                          <Badge variant="default" size="sm">
+                            <Package className="h-3 w-3 mr-1" />
+                            Assets
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     {visitor.status === "checked_in" && (
@@ -162,6 +239,39 @@ export default function VisitorHistory() {
                       </div>
                     )}
                   </div>
+
+                  {/* ✅ NEW: Forwarding Info Card */}
+                  {visitor.isForwarded && (
+                    <div className="p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      {visitor.forwardedFrom && (
+                        <p className="text-xs sm:text-sm text-blue-800">
+                          <strong>Forwarded by:</strong>{" "}
+                          {visitor.forwardedFrom.fullName} (Unit{" "}
+                          {visitor.forwardedFrom.unitNumber})
+                        </p>
+                      )}
+                      {visitor.forwardedTo && (
+                        <p className="text-xs sm:text-sm text-blue-800 mt-1">
+                          <strong>Forwarded to:</strong>{" "}
+                          {visitor.forwardedTo.fullName} (Unit{" "}
+                          {visitor.forwardedTo.unitNumber})
+                        </p>
+                      )}
+                      {visitor.forwardingNote && (
+                        <p className="text-xs sm:text-sm text-blue-700 mt-1">
+                          <strong>Note:</strong> {visitor.forwardingNote}
+                        </p>
+                      )}
+                      {visitor.forwardedAt && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          {format(
+                            new Date(visitor.forwardedAt),
+                            "MMM dd, yyyy HH:mm"
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Details Grid */}
                   <div className="space-y-1 text-xs sm:text-sm text-gray-600">
@@ -190,6 +300,32 @@ export default function VisitorHistory() {
                       </span>
                       <span className="text-gray-600">{visitor.purpose}</span>
                     </div>
+
+                    {/* ✅ NEW: Asset Info */}
+                    {visitor.assetDescription && (
+                      <div className="pt-1">
+                        <span className="font-medium text-gray-700">
+                          Assets:{" "}
+                        </span>
+                        <span className="text-gray-600">
+                          {visitor.assetDescription}
+                        </span>
+                        {visitor.assetPhotoUrl && (
+                          <button
+                            onClick={() =>
+                              handleViewAsset(
+                                visitor.assetPhotoUrl!,
+                                visitor.assetDescription!
+                              )
+                            }
+                            className="ml-2 text-purple-600 hover:text-purple-700 inline-flex items-center gap-1"
+                          >
+                            <ImageIcon className="h-3 w-3" />
+                            View
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -224,6 +360,44 @@ export default function VisitorHistory() {
           </Button>
         </div>
       )}
+
+      {/* ✅ NEW: Photo Modal */}
+      <Modal
+        isOpen={showPhotoModal}
+        onClose={() => setShowPhotoModal(false)}
+        title="Visitor Photo"
+        size="lg"
+      >
+        <img src={selectedPhoto} alt="Visitor" className="w-full rounded-lg" />
+      </Modal>
+
+      {/* ✅ NEW: Asset Photo Modal */}
+      <Modal
+        isOpen={showAssetModal}
+        onClose={() => setShowAssetModal(false)}
+        title="Asset Photo"
+        size="lg"
+      >
+        {selectedAsset && (
+          <div className="space-y-3">
+            <img
+              src={selectedAsset.photo}
+              alt="Asset"
+              className="w-full rounded-lg"
+            />
+            {selectedAsset.description && (
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm font-medium text-gray-700">
+                  Description:
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedAsset.description}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
