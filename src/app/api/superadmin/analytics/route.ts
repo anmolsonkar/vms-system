@@ -18,10 +18,48 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const propertyId = searchParams.get("propertyId");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
 
+    // Build base query
     const baseQuery: any = {};
     if (propertyId) baseQuery.propertyId = propertyId;
 
+    // Build date filter
+    let dateFilter: any = {};
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      if (startDate) {
+        dateFilter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999); // End of day
+        dateFilter.createdAt.$lte = end;
+      }
+    }
+
+    // Combine filters
+    const combinedQuery = { ...baseQuery, ...dateFilter };
+
+    // Fetch visitor statistics with date filter
+    const [
+      totalVisitors,
+      pendingVisitors,
+      approvedVisitors,
+      rejectedVisitors,
+      checkedInVisitors,
+      checkedOutVisitors,
+    ] = await Promise.all([
+      Visitor.countDocuments(combinedQuery),
+      Visitor.countDocuments({ ...combinedQuery, status: "pending" }),
+      Visitor.countDocuments({ ...combinedQuery, status: "approved" }),
+      Visitor.countDocuments({ ...combinedQuery, status: "rejected" }),
+      Visitor.countDocuments({ ...combinedQuery, status: "checked_in" }),
+      Visitor.countDocuments({ ...combinedQuery, status: "checked_out" }),
+    ]);
+
+    // Time-based statistics (always calculated from absolute dates)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -30,24 +68,11 @@ export async function GET(request: NextRequest) {
 
     const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const [
-      totalVisitors,
-      pendingVisitors,
-      approvedVisitors,
-      rejectedVisitors,
-      checkedInVisitors,
-      checkedOutVisitors,
-      todayVisitors,
-      weekVisitors,
-      monthVisitors,
-    ] = await Promise.all([
-      Visitor.countDocuments(baseQuery),
-      Visitor.countDocuments({ ...baseQuery, status: "pending" }),
-      Visitor.countDocuments({ ...baseQuery, status: "approved" }),
-      Visitor.countDocuments({ ...baseQuery, status: "rejected" }),
-      Visitor.countDocuments({ ...baseQuery, status: "checked_in" }),
-      Visitor.countDocuments({ ...baseQuery, status: "checked_out" }),
-      Visitor.countDocuments({ ...baseQuery, createdAt: { $gte: today } }),
+    const [todayVisitors, weekVisitors, monthVisitors] = await Promise.all([
+      Visitor.countDocuments({
+        ...baseQuery,
+        createdAt: { $gte: today },
+      }),
       Visitor.countDocuments({
         ...baseQuery,
         createdAt: { $gte: thisWeekStart },
@@ -58,6 +83,7 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // Fetch user statistics
     const userQuery: any = {};
     if (propertyId) userQuery.propertyId = propertyId;
 
@@ -67,13 +93,65 @@ export async function GET(request: NextRequest) {
       User.countDocuments({ ...userQuery, isActive: true }),
     ]);
 
+    // Fetch property statistics
     const totalProperties = await Property.countDocuments({});
 
-    const recentVisitors = await Visitor.find(baseQuery)
-      .populate("hostResidentId", "name unitNumber") // ✅ now uses User
+    // Fetch recent visitors with full details and date filter
+    const recentVisitors = await Visitor.find(combinedQuery)
+      .populate("hostResidentId", "fullName unitNumber phoneNumber email")
+      .populate("propertyId", "name address")
+      .populate("forwardedFrom", "fullName unitNumber")
+      .populate("forwardedTo", "fullName unitNumber")
       .sort({ createdAt: -1 })
-      .limit(10)
+      .limit(100) // Limit to 100 for pagination
       .lean();
+
+    // Format visitor data with proper field mapping
+    const formattedVisitors = recentVisitors.map((visitor: any) => ({
+      _id: visitor._id,
+      name: visitor.name || "-",
+      phone: visitor.phone || "-",
+      phoneVerified: visitor.phoneVerified || false,
+      photoUrl:
+        visitor.photoUrl ||
+        visitor.idCardImageUrl ||
+        "/images/default-visitor-photo.png",
+      assetPhotoUrl: visitor.assetPhotoUrl || null,
+      assetDescription: visitor.assetDescription || null,
+      purpose: visitor.purpose || "-",
+      vehicleNumber: visitor.vehicleNumber || null,
+      numberOfPersons: visitor.numberOfPersons || 1,
+      status: visitor.status || "pending",
+      isWalkIn: visitor.isWalkIn || false,
+      otpVerified: visitor.otpVerified || false,
+      createdAt: visitor.createdAt,
+      updatedAt: visitor.updatedAt,
+      approvedAt: visitor.approvedAt || null,
+      approvedBy: visitor.approvedBy || null,
+      rejectedAt: visitor.rejectedAt || null,
+      checkInTime: visitor.checkInTime || null,
+      checkOutTime: visitor.checkOutTime || null,
+      isForwarded: visitor.isForwarded || false,
+      forwardedFrom: visitor.forwardedFrom || null,
+      forwardedTo: visitor.forwardedTo || null,
+      forwardingNote: visitor.forwardingNote || null,
+      hostResident: visitor.hostResidentId
+        ? {
+            _id: visitor.hostResidentId._id,
+            fullName: visitor.hostResidentId.fullName || "-",
+            unitNumber: visitor.hostResidentId.unitNumber || "-",
+            phoneNumber: visitor.hostResidentId.phoneNumber || "-",
+            email: visitor.hostResidentId.email || "-",
+          }
+        : null,
+      property: visitor.propertyId
+        ? {
+            _id: visitor.propertyId._id,
+            name: visitor.propertyId.name || "-",
+            address: visitor.propertyId.address || "-",
+          }
+        : null,
+    }));
 
     return NextResponse.json(
       {
@@ -98,7 +176,7 @@ export async function GET(request: NextRequest) {
           properties: {
             total: totalProperties,
           },
-          recentActivity: recentVisitors,
+          recentActivity: formattedVisitors,
         },
       },
       { status: 200 }

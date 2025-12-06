@@ -9,8 +9,8 @@ export interface IVisitor extends Document {
   idCardNumber?: string;
   idCardImageUrl?: string;
   photoUrl: string;
-  assetPhotoUrl?: string; // ✅ NEW: Asset photo
-  assetDescription?: string; // ✅ NEW: Asset description
+  assetPhotoUrl?: string; // ✅ Asset photo
+  assetDescription?: string; // ✅ Asset description
   purpose: string;
   hostResidentId: mongoose.Types.ObjectId;
   vehicleNumber?: string;
@@ -26,13 +26,13 @@ export interface IVisitor extends Document {
   markedExitBy?: mongoose.Types.ObjectId;
   markedExitAt?: Date;
   actualCheckOutTime?: Date;
+  checkOutTime?: Date; // ✅ For analytics compatibility
   checkedOutBy?: mongoose.Types.ObjectId;
   isWalkIn: boolean;
   createdBy?: mongoose.Types.ObjectId;
   otp?: string;
   otpExpiry?: Date;
   otpVerified: boolean;
-  // ✅ NEW: Forwarding fields
   forwardedFrom?: mongoose.Types.ObjectId;
   forwardedTo?: mongoose.Types.ObjectId;
   forwardedAt?: Date;
@@ -85,7 +85,7 @@ const VisitorSchema = new Schema<IVisitor>(
       required: [true, "Visitor photo is required"],
     },
 
-    // ✅ NEW: Asset capture fields
+    // ✅ Asset capture fields
     assetPhotoUrl: {
       type: String,
     },
@@ -169,6 +169,11 @@ const VisitorSchema = new Schema<IVisitor>(
       type: Date,
     },
 
+    // ✅ Added for analytics compatibility
+    checkOutTime: {
+      type: Date,
+    },
+
     checkedOutBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -197,7 +202,7 @@ const VisitorSchema = new Schema<IVisitor>(
       default: false,
     },
 
-    // ✅ NEW: Forwarding fields
+    // ✅ Forwarding fields
     forwardedFrom: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -233,7 +238,7 @@ VisitorSchema.index({ hostResidentId: 1, status: 1 });
 VisitorSchema.index({ phone: 1 });
 VisitorSchema.index({ createdAt: -1 });
 VisitorSchema.index({ checkInTime: 1, status: 1 });
-VisitorSchema.index({ forwardedTo: 1, status: 1 }); // ✅ NEW: Index for forwarded visitors
+VisitorSchema.index({ forwardedTo: 1, status: 1 });
 
 const Visitor: Model<IVisitor> =
   mongoose.models.Visitor || mongoose.model<IVisitor>("Visitor", VisitorSchema);

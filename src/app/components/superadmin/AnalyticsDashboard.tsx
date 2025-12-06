@@ -20,8 +20,10 @@ import {
   RefreshCw,
   LogIn,
   LogOut,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 import axios from "axios";
 
 interface Visitor {
@@ -45,15 +47,28 @@ interface Visitor {
   checkInTime?: string;
   checkOutTime?: string;
   numberOfPersons?: number;
+  isForwarded?: boolean;
+  forwardedFrom?: {
+    _id: string;
+    fullName: string;
+    unitNumber: string;
+  };
+  forwardedTo?: {
+    _id: string;
+    fullName: string;
+    unitNumber: string;
+  };
   hostResident?: {
     _id: string;
     fullName: string;
     unitNumber: string;
     phoneNumber: string;
+    email: string;
   };
   property?: {
     _id: string;
     name: string;
+    address: string;
   };
 }
 
@@ -80,6 +95,8 @@ interface Analytics {
   recentActivity: Visitor[];
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AnalyticsDashboard() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,60 +104,68 @@ export default function AnalyticsDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedVisitor, setSelectedVisitor] = useState<Visitor | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [modalPhotoUrl, setModalPhotoUrl] = useState("");
+  const [modalPhotoTitle, setModalPhotoTitle] = useState("");
 
-  const fetchAnalytics = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    setError(null);
-
-    try {
-      const params: any = {};
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-
-      const response = await axios.get("/api/superadmin/analytics", { params });
-
-      if (response.data.success) {
-        const apiData = response.data.data;
-
-        setAnalytics({
-          visitors: {
-            total: apiData.visitors?.total || 0,
-            pending: apiData.visitors?.pending || 0,
-            approved: apiData.visitors?.approved || 0,
-            rejected: apiData.visitors?.rejected || 0,
-            checkedIn: apiData.visitors?.checkedIn || 0,
-            checkedOut: apiData.visitors?.checkedOut || 0,
-            today: apiData.visitors?.today || 0,
-            thisWeek: apiData.visitors?.thisWeek || 0,
-            thisMonth: apiData.visitors?.thisMonth || 0,
-          },
-          users: {
-            totalResidents: apiData.users?.totalResidents || 0,
-            totalGuards: apiData.users?.totalGuards || 0,
-            activeUsers: apiData.users?.activeUsers || 0,
-          },
-          properties: {
-            total: apiData.properties?.total || 0,
-          },
-          recentActivity: apiData.recentActivity || [],
-        });
+  const fetchAnalytics = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
-    } catch (error: any) {
-      console.error("Fetch analytics error:", error);
-      setError(error.response?.data?.error || "Failed to load analytics");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [startDate, endDate]);
+      setError(null);
+
+      try {
+        const params: any = {};
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
+
+        const response = await axios.get("/api/superadmin/analytics", {
+          params,
+        });
+
+        if (response.data.success) {
+          const apiData = response.data.data;
+
+          setAnalytics({
+            visitors: {
+              total: apiData.visitors?.total || 0,
+              pending: apiData.visitors?.pending || 0,
+              approved: apiData.visitors?.approved || 0,
+              rejected: apiData.visitors?.rejected || 0,
+              checkedIn: apiData.visitors?.checkedIn || 0,
+              checkedOut: apiData.visitors?.checkedOut || 0,
+              today: apiData.visitors?.today || 0,
+              thisWeek: apiData.visitors?.thisWeek || 0,
+              thisMonth: apiData.visitors?.thisMonth || 0,
+            },
+            users: {
+              totalResidents: apiData.users?.totalResidents || 0,
+              totalGuards: apiData.users?.totalGuards || 0,
+              activeUsers: apiData.users?.activeUsers || 0,
+            },
+            properties: {
+              total: apiData.properties?.total || 0,
+            },
+            recentActivity: apiData.recentActivity || [],
+          });
+          setCurrentPage(1); // Reset to first page on new data
+        }
+      } catch (error: any) {
+        console.error("Fetch analytics error:", error);
+        setError(error.response?.data?.error || "Failed to load analytics");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [startDate, endDate]
+  );
 
   // Initial fetch
   useEffect(() => {
@@ -149,19 +174,23 @@ export default function AnalyticsDashboard() {
 
   const handleDatePreset = (preset: "today" | "week" | "month" | "all") => {
     const now = new Date();
-    
+
     switch (preset) {
       case "today":
-        setStartDate(format(startOfDay(now), "yyyy-MM-dd"));
-        setEndDate(format(endOfDay(now), "yyyy-MM-dd"));
+        const todayStart = new Date(now.setHours(0, 0, 0, 0));
+        setStartDate(format(todayStart, "yyyy-MM-dd"));
+        setEndDate(format(new Date(), "yyyy-MM-dd"));
         break;
       case "week":
-        setStartDate(format(startOfWeek(now), "yyyy-MM-dd"));
-        setEndDate(format(endOfWeek(now), "yyyy-MM-dd"));
+        const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+        weekStart.setHours(0, 0, 0, 0);
+        setStartDate(format(weekStart, "yyyy-MM-dd"));
+        setEndDate(format(new Date(), "yyyy-MM-dd"));
         break;
       case "month":
-        setStartDate(format(startOfMonth(now), "yyyy-MM-dd"));
-        setEndDate(format(endOfMonth(now), "yyyy-MM-dd"));
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        setStartDate(format(monthStart, "yyyy-MM-dd"));
+        setEndDate(format(new Date(), "yyyy-MM-dd"));
         break;
       case "all":
         setStartDate("");
@@ -175,8 +204,9 @@ export default function AnalyticsDashboard() {
     setShowDetailsModal(true);
   };
 
-  const handleViewPhoto = (photoUrl: string) => {
+  const handleViewPhoto = (photoUrl: string, title: string = "Photo") => {
     setModalPhotoUrl(photoUrl);
+    setModalPhotoTitle(title);
     setShowPhotoModal(true);
   };
 
@@ -191,6 +221,7 @@ export default function AnalyticsDashboard() {
       "Vehicle",
       "Status",
       "Walk-in",
+      "Forwarded",
       "Property",
       "Unit",
       "Resident",
@@ -206,34 +237,37 @@ export default function AnalyticsDashboard() {
       "Last Updated",
     ];
 
-    const rows = analytics.recentActivity.map((visitor) => [
+    const rows = paginatedVisitors.map((visitor) => [
       visitor.name,
       visitor.phone,
       visitor.phoneVerified ? "Yes" : "No",
       visitor.purpose,
-      visitor.vehicleNumber || "N/A",
+      visitor.vehicleNumber || "-",
       visitor.status.toUpperCase(),
       visitor.isWalkIn ? "Yes" : "No",
-      visitor.property?.name || "N/A",
-      visitor.hostResident?.unitNumber || "N/A",
-      visitor.hostResident?.fullName || "N/A",
-      visitor.hostResident?.phoneNumber || "N/A",
+      visitor.isForwarded
+        ? `Yes (${visitor.forwardedTo?.fullName || "N/A"})`
+        : "No",
+      visitor.property?.name || "-",
+      visitor.hostResident?.unitNumber || "-",
+      visitor.hostResident?.fullName || "-",
+      visitor.hostResident?.phoneNumber || "-",
       format(new Date(visitor.createdAt), "MMM dd, yyyy HH:mm:ss"),
       visitor.approvedAt
         ? format(new Date(visitor.approvedAt), "MMM dd, yyyy HH:mm:ss")
-        : "N/A",
-      visitor.approvedBy || "N/A",
+        : "-",
+      visitor.approvedBy || "-",
       visitor.rejectedAt
         ? format(new Date(visitor.rejectedAt), "MMM dd, yyyy HH:mm:ss")
-        : "N/A",
+        : "-",
       visitor.checkInTime
         ? format(new Date(visitor.checkInTime), "MMM dd, yyyy HH:mm:ss")
-        : "N/A",
+        : "-",
       visitor.checkOutTime
         ? format(new Date(visitor.checkOutTime), "MMM dd, yyyy HH:mm:ss")
-        : "N/A",
+        : "-",
       visitor.numberOfPersons || "1",
-      visitor.assetDescription || "N/A",
+      visitor.assetDescription || "-",
       format(new Date(visitor.updatedAt), "MMM dd, yyyy HH:mm:ss"),
     ]);
 
@@ -246,7 +280,10 @@ export default function AnalyticsDashboard() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `visitors-export-${format(new Date(), "yyyy-MM-dd-HHmmss")}.csv`;
+    a.download = `visitors-export-${format(
+      new Date(),
+      "yyyy-MM-dd-HHmmss"
+    )}.csv`;
     a.click();
   };
 
@@ -280,6 +317,23 @@ export default function AnalyticsDashboard() {
       </Card>
     );
   }
+
+  // Pagination logic
+  const totalVisitors = analytics.recentActivity.length;
+  const totalPages = Math.ceil(totalVisitors / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedVisitors = analytics.recentActivity.slice(
+    startIndex,
+    endIndex
+  );
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   const stats = [
     {
@@ -333,6 +387,13 @@ export default function AnalyticsDashboard() {
       variant: "info" as const,
       icon: LogIn,
     },
+    // ✅ ADD THIS:
+    {
+      label: "Checked Out",
+      value: analytics.visitors.checkedOut,
+      variant: "default" as const,
+      icon: LogOut,
+    },
   ];
 
   return (
@@ -354,7 +415,9 @@ export default function AnalyticsDashboard() {
             disabled={refreshing}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 text-sm"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
             {refreshing ? "Refreshing..." : "Refresh"}
           </button>
         </div>
@@ -364,7 +427,9 @@ export default function AnalyticsDashboard() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-purple-600" />
-              <h3 className="text-sm font-semibold text-gray-900">Date Filter</h3>
+              <h3 className="text-sm font-semibold text-gray-900">
+                Date Filter
+              </h3>
             </div>
 
             {/* Quick Presets */}
@@ -425,10 +490,13 @@ export default function AnalyticsDashboard() {
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
                   {startDate && endDate
-                    ? `Showing data from ${format(new Date(startDate), "MMM dd, yyyy")} to ${format(new Date(endDate), "MMM dd, yyyy")}`
+                    ? `Showing: ${format(
+                        new Date(startDate),
+                        "MMM dd, yyyy"
+                      )} - ${format(new Date(endDate), "MMM dd, yyyy")}`
                     : startDate
-                    ? `Showing data from ${format(new Date(startDate), "MMM dd, yyyy")}`
-                    : `Showing data until ${format(new Date(endDate), "MMM dd, yyyy")}`}
+                    ? `From: ${format(new Date(startDate), "MMM dd, yyyy")}`
+                    : `Until: ${format(new Date(endDate), "MMM dd, yyyy")}`}
                 </p>
                 <button
                   onClick={() => {
@@ -474,7 +542,7 @@ export default function AnalyticsDashboard() {
         <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
           Visitor Status Breakdown
         </h3>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {visitorStats.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -498,9 +566,7 @@ export default function AnalyticsDashboard() {
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
                   {stat.value}
                 </p>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  {stat.label}
-                </p>
+                <p className="text-xs sm:text-sm text-gray-600">{stat.label}</p>
               </div>
             );
           })}
@@ -511,11 +577,11 @@ export default function AnalyticsDashboard() {
       <Card>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
           <h3 className="text-base sm:text-lg font-semibold text-gray-900">
-            All Visitors ({analytics.recentActivity.length})
+            All Visitors ({totalVisitors})
           </h3>
           <button
             onClick={exportToCSV}
-            disabled={analytics.recentActivity.length === 0}
+            disabled={totalVisitors === 0}
             className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-xs sm:text-sm"
           >
             <Download className="h-4 w-4" />
@@ -523,10 +589,12 @@ export default function AnalyticsDashboard() {
           </button>
         </div>
 
-        {analytics.recentActivity.length === 0 ? (
+        {totalVisitors === 0 ? (
           <div className="text-center py-8">
             <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No visitors found for selected date range</p>
+            <p className="text-gray-500">
+              No visitors found for selected date range
+            </p>
           </div>
         ) : (
           <>
@@ -568,26 +636,32 @@ export default function AnalyticsDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {analytics.recentActivity.map((visitor) => (
+                  {paginatedVisitors.map((visitor) => (
                     <tr key={visitor._id} className="hover:bg-gray-50">
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
                           <img
                             src={visitor.photoUrl}
                             alt={visitor.name}
-                            onClick={() => handleViewPhoto(visitor.photoUrl)}
+                            onClick={() =>
+                              handleViewPhoto(visitor.photoUrl, "Visitor Photo")
+                            }
                             className="h-10 w-10 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-purple-500"
                           />
                           <div>
                             <p className="text-sm font-medium text-gray-900">
                               {visitor.name}
                             </p>
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <div className="flex items-center gap-1 text-xs">
                               {visitor.isWalkIn && (
-                                <Badge variant="info" size="sm">Walk-in</Badge>
+                                <Badge variant="info" size="sm">
+                                  Walk-in
+                                </Badge>
                               )}
                               {visitor.vehicleNumber && (
-                                <span>🚗 {visitor.vehicleNumber}</span>
+                                <span className="text-gray-500">
+                                  🚗 {visitor.vehicleNumber}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -602,28 +676,38 @@ export default function AnalyticsDashboard() {
                       <td className="px-3 py-3">
                         <div>
                           <p className="text-sm font-medium text-gray-900">
-                            {visitor.property?.name || "N/A"}
+                            {visitor.property?.name || "-"}
                           </p>
                           <p className="text-xs text-gray-500">
-                            Unit {visitor.hostResident?.unitNumber || "N/A"}
+                            Unit {visitor.hostResident?.unitNumber || "-"}
                           </p>
                           <p className="text-xs text-gray-600">
-                            {visitor.hostResident?.fullName || "N/A"}
+                            {visitor.hostResident?.fullName || "-"}
                           </p>
+                          {visitor.isForwarded && (
+                            <p className="text-xs text-purple-600 mt-1">
+                              ↗ Forwarded to {visitor.forwardedTo?.fullName}
+                            </p>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-3">
                         <p className="text-sm text-gray-900 max-w-xs truncate">
                           {visitor.purpose}
                         </p>
-                        {visitor.assetDescription && (
+                        {visitor.assetPhotoUrl && (
                           <div className="flex items-center gap-1 mt-1">
                             <Package className="h-3 w-3 text-purple-500" />
                             <span
                               className="text-xs text-purple-600 cursor-pointer hover:underline"
-                              onClick={() => handleViewDetails(visitor)}
+                              onClick={() =>
+                                handleViewPhoto(
+                                  visitor.assetPhotoUrl!,
+                                  "Asset Photo"
+                                )
+                              }
                             >
-                              {visitor.assetDescription}
+                              {visitor.assetDescription || "View Asset"}
                             </span>
                           </div>
                         )}
@@ -656,7 +740,9 @@ export default function AnalyticsDashboard() {
                             </p>
                           </>
                         ) : (
-                          <span className="text-xs text-gray-400">Pending</span>
+                          <span className="text-xs text-yellow-600">
+                            Pending
+                          </span>
                         )}
                       </td>
                       <td className="px-3 py-3">
@@ -721,26 +807,45 @@ export default function AnalyticsDashboard() {
 
             {/* Mobile Card View */}
             <div className="lg:hidden space-y-4">
-              {analytics.recentActivity.map((visitor) => (
+              {paginatedVisitors.map((visitor) => (
                 <div
                   key={visitor._id}
                   className="bg-gray-50 rounded-lg p-4 space-y-3"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <img
-                        src={visitor.photoUrl}
-                        alt={visitor.name}
-                        onClick={() => handleViewPhoto(visitor.photoUrl)}
-                        className="h-12 w-12 rounded-full object-cover cursor-pointer"
-                      />
+                      <div className="relative">
+                        <img
+                          src={visitor.photoUrl}
+                          alt={visitor.name}
+                          onClick={() =>
+                            handleViewPhoto(visitor.photoUrl, "Visitor Photo")
+                          }
+                          className="h-12 w-12 rounded-full object-cover cursor-pointer"
+                        />
+                        {visitor.assetPhotoUrl && (
+                          <div
+                            onClick={() =>
+                              handleViewPhoto(
+                                visitor.assetPhotoUrl!,
+                                "Asset Photo"
+                              )
+                            }
+                            className="absolute -bottom-1 -right-1 bg-purple-500 rounded-full p-1 cursor-pointer"
+                          >
+                            <Package className="h-3 w-3 text-white" />
+                          </div>
+                        )}
+                      </div>
                       <div>
                         <p className="text-sm font-semibold text-gray-900">
                           {visitor.name}
                         </p>
                         <p className="text-xs text-gray-500">{visitor.phone}</p>
                         {visitor.isWalkIn && (
-                          <Badge variant="info" size="sm">Walk-in</Badge>
+                          <Badge variant="info" size="sm">
+                            Walk-in
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -766,13 +871,13 @@ export default function AnalyticsDashboard() {
                     <div>
                       <p className="text-gray-500">Property</p>
                       <p className="text-gray-900 font-medium">
-                        {visitor.property?.name || "N/A"}
+                        {visitor.property?.name || "-"}
                       </p>
                     </div>
                     <div>
                       <p className="text-gray-500">Unit</p>
                       <p className="text-gray-900 font-medium">
-                        {visitor.hostResident?.unitNumber || "N/A"}
+                        {visitor.hostResident?.unitNumber || "-"}
                       </p>
                     </div>
                     <div>
@@ -785,7 +890,10 @@ export default function AnalyticsDashboard() {
                       <p className="text-gray-500">Check-In</p>
                       <p className="text-gray-900 font-medium">
                         {visitor.checkInTime
-                          ? format(new Date(visitor.checkInTime), "MMM dd, HH:mm")
+                          ? format(
+                              new Date(visitor.checkInTime),
+                              "MMM dd, HH:mm"
+                            )
                           : "-"}
                       </p>
                     </div>
@@ -801,6 +909,74 @@ export default function AnalyticsDashboard() {
                 </div>
               ))}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between border-t pt-4">
+                <div className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{startIndex + 1}</span>{" "}
+                  to{" "}
+                  <span className="font-medium">
+                    {Math.min(endIndex, totalVisitors)}
+                  </span>{" "}
+                  of <span className="font-medium">{totalVisitors}</span>{" "}
+                  visitors
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  <div className="flex gap-1">
+                    {[...Array(totalPages)].map((_, index) => {
+                      const page = index + 1;
+                      // Show first page, last page, current page, and pages around current
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page)}
+                            className={`px-3 py-1 rounded-lg text-sm ${
+                              currentPage === page
+                                ? "bg-purple-600 text-white"
+                                : "border border-gray-300 hover:bg-gray-50"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span key={page} className="px-2">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </Card>
@@ -808,19 +984,24 @@ export default function AnalyticsDashboard() {
       {/* Photo Modal */}
       {showPhotoModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
           onClick={() => setShowPhotoModal(false)}
         >
           <div className="relative max-w-4xl w-full">
-            <button
-              onClick={() => setShowPhotoModal(false)}
-              className="absolute -top-10 right-0 text-white hover:text-gray-300"
-            >
-              <XCircle className="h-8 w-8" />
-            </button>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white text-lg font-semibold">
+                {modalPhotoTitle}
+              </h3>
+              <button
+                onClick={() => setShowPhotoModal(false)}
+                className="text-white hover:text-gray-300"
+              >
+                <XCircle className="h-8 w-8" />
+              </button>
+            </div>
             <img
               src={modalPhotoUrl}
-              alt="Visitor"
+              alt={modalPhotoTitle}
               className="w-full h-auto rounded-lg"
             />
           </div>
@@ -829,9 +1010,9 @@ export default function AnalyticsDashboard() {
 
       {/* Visitor Details Modal */}
       {showDetailsModal && selectedVisitor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-4xl w-full my-8">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-lg z-10">
               <h3 className="text-xl font-bold text-gray-900">
                 Complete Visitor Details
               </h3>
@@ -843,38 +1024,92 @@ export default function AnalyticsDashboard() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Photos Section */}
+            <div className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+              {/* Photos Section - UPDATED WITH DUAL PHOTOS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Visitor Photo */}
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    Visitor Photo
-                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-700">
+                      Visitor Photo
+                    </p>
+                    <button
+                      onClick={() =>
+                        handleViewPhoto(
+                          selectedVisitor.photoUrl,
+                          "Visitor Photo"
+                        )
+                      }
+                      className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                    >
+                      <Eye className="h-3 w-3" />
+                      View Full
+                    </button>
+                  </div>
                   <img
                     src={selectedVisitor.photoUrl}
                     alt={selectedVisitor.name}
-                    onClick={() => handleViewPhoto(selectedVisitor.photoUrl)}
-                    className="w-full h-64 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:border-purple-500"
+                    onClick={() =>
+                      handleViewPhoto(selectedVisitor.photoUrl, "Visitor Photo")
+                    }
+                    className="w-full h-64 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:border-purple-500 transition-all"
                   />
                 </div>
-                {selectedVisitor.assetPhotoUrl && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">
+
+                {/* Asset Photo */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-700">
                       Asset Photo
                     </p>
-                    <img
-                      src={selectedVisitor.assetPhotoUrl}
-                      alt="Asset"
-                      onClick={() => handleViewPhoto(selectedVisitor.assetPhotoUrl!)}
-                      className="w-full h-64 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:border-purple-500"
-                    />
-                    {selectedVisitor.assetDescription && (
-                      <p className="text-xs text-gray-600 mt-2 p-2 bg-gray-50 rounded">
-                        <strong>Description:</strong> {selectedVisitor.assetDescription}
-                      </p>
+                    {selectedVisitor.assetPhotoUrl && (
+                      <button
+                        onClick={() =>
+                          handleViewPhoto(
+                            selectedVisitor.assetPhotoUrl!,
+                            "Asset Photo"
+                          )
+                        }
+                        className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                      >
+                        <Eye className="h-3 w-3" />
+                        View Full
+                      </button>
                     )}
                   </div>
-                )}
+                  {selectedVisitor.assetPhotoUrl ? (
+                    <>
+                      <img
+                        src={selectedVisitor.assetPhotoUrl}
+                        alt="Asset"
+                        onClick={() =>
+                          handleViewPhoto(
+                            selectedVisitor.assetPhotoUrl!,
+                            "Asset Photo"
+                          )
+                        }
+                        className="w-full h-64 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:border-purple-500 transition-all"
+                      />
+                      {selectedVisitor.assetDescription && (
+                        <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded">
+                          <p className="text-xs font-medium text-purple-900">
+                            Asset Description:
+                          </p>
+                          <p className="text-xs text-purple-700 mt-1">
+                            {selectedVisitor.assetDescription}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-64 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                      <div className="text-center text-gray-400">
+                        <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No Asset Photo</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Basic Info */}
@@ -903,31 +1138,31 @@ export default function AnalyticsDashboard() {
                 <div>
                   <p className="text-xs text-gray-500">Property</p>
                   <p className="text-sm font-semibold text-gray-900">
-                    {selectedVisitor.property?.name || "N/A"}
+                    {selectedVisitor.property?.name || "-"}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Unit Number</p>
                   <p className="text-sm font-semibold text-gray-900">
-                    {selectedVisitor.hostResident?.unitNumber || "N/A"}
+                    {selectedVisitor.hostResident?.unitNumber || "-"}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Host Resident</p>
                   <p className="text-sm font-semibold text-gray-900">
-                    {selectedVisitor.hostResident?.fullName || "N/A"}
+                    {selectedVisitor.hostResident?.fullName || "-"}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Resident Phone</p>
                   <p className="text-sm font-semibold text-gray-900">
-                    {selectedVisitor.hostResident?.phoneNumber || "N/A"}
+                    {selectedVisitor.hostResident?.phoneNumber || "-"}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Vehicle Number</p>
                   <p className="text-sm font-semibold text-gray-900">
-                    {selectedVisitor.vehicleNumber || "N/A"}
+                    {selectedVisitor.vehicleNumber || "-"}
                   </p>
                 </div>
                 <div>
@@ -937,6 +1172,37 @@ export default function AnalyticsDashboard() {
                   </p>
                 </div>
               </div>
+
+              {/* Forwarding Info */}
+              {selectedVisitor.isForwarded && (
+                <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-sm font-semibold text-purple-900 mb-2">
+                    Forwarding Information
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {selectedVisitor.forwardedFrom && (
+                      <div>
+                        <p className="text-xs text-purple-700">
+                          Forwarded From
+                        </p>
+                        <p className="font-medium text-purple-900">
+                          {selectedVisitor.forwardedFrom.fullName} (Unit{" "}
+                          {selectedVisitor.forwardedFrom.unitNumber})
+                        </p>
+                      </div>
+                    )}
+                    {selectedVisitor.forwardedTo && (
+                      <div>
+                        <p className="text-xs text-purple-700">Forwarded To</p>
+                        <p className="font-medium text-purple-900">
+                          {selectedVisitor.forwardedTo.fullName} (Unit{" "}
+                          {selectedVisitor.forwardedTo.unitNumber})
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Purpose */}
               <div>
@@ -958,9 +1224,14 @@ export default function AnalyticsDashboard() {
                       <Clock className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-blue-900">Request Sent</p>
+                      <p className="text-xs font-medium text-blue-900">
+                        Request Sent
+                      </p>
                       <p className="text-sm font-semibold text-blue-700">
-                        {format(new Date(selectedVisitor.createdAt), "MMM dd, yyyy HH:mm:ss")}
+                        {format(
+                          new Date(selectedVisitor.createdAt),
+                          "MMM dd, yyyy HH:mm:ss"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -972,9 +1243,14 @@ export default function AnalyticsDashboard() {
                         <CheckCircle className="h-4 w-4 text-white" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-green-900">Approved</p>
+                        <p className="text-xs font-medium text-green-900">
+                          Approved
+                        </p>
                         <p className="text-sm font-semibold text-green-700">
-                          {format(new Date(selectedVisitor.approvedAt), "MMM dd, yyyy HH:mm:ss")}
+                          {format(
+                            new Date(selectedVisitor.approvedAt),
+                            "MMM dd, yyyy HH:mm:ss"
+                          )}
                         </p>
                         {selectedVisitor.approvedBy && (
                           <p className="text-xs text-green-600 mt-1">
@@ -992,9 +1268,14 @@ export default function AnalyticsDashboard() {
                         <XCircle className="h-4 w-4 text-white" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-red-900">Rejected</p>
+                        <p className="text-xs font-medium text-red-900">
+                          Rejected
+                        </p>
                         <p className="text-sm font-semibold text-red-700">
-                          {format(new Date(selectedVisitor.rejectedAt), "MMM dd, yyyy HH:mm:ss")}
+                          {format(
+                            new Date(selectedVisitor.rejectedAt),
+                            "MMM dd, yyyy HH:mm:ss"
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1007,9 +1288,14 @@ export default function AnalyticsDashboard() {
                         <LogIn className="h-4 w-4 text-white" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-purple-900">Checked In</p>
+                        <p className="text-xs font-medium text-purple-900">
+                          Checked In
+                        </p>
                         <p className="text-sm font-semibold text-purple-700">
-                          {format(new Date(selectedVisitor.checkInTime), "MMM dd, yyyy HH:mm:ss")}
+                          {format(
+                            new Date(selectedVisitor.checkInTime),
+                            "MMM dd, yyyy HH:mm:ss"
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1017,14 +1303,19 @@ export default function AnalyticsDashboard() {
 
                   {/* Check-Out / Exit */}
                   {selectedVisitor.checkOutTime && (
-                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="bg-gray-500 p-2 rounded-full">
                         <LogOut className="h-4 w-4 text-white" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-gray-900">Checked Out / Exit</p>
+                        <p className="text-xs font-medium text-gray-900">
+                          Checked Out / Exit
+                        </p>
                         <p className="text-sm font-semibold text-gray-700">
-                          {format(new Date(selectedVisitor.checkOutTime), "MMM dd, yyyy HH:mm:ss")}
+                          {format(
+                            new Date(selectedVisitor.checkOutTime),
+                            "MMM dd, yyyy HH:mm:ss"
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1036,9 +1327,14 @@ export default function AnalyticsDashboard() {
                       <RefreshCw className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-gray-900">Last Updated</p>
+                      <p className="text-xs font-medium text-gray-900">
+                        Last Updated
+                      </p>
                       <p className="text-sm font-semibold text-gray-700">
-                        {format(new Date(selectedVisitor.updatedAt), "MMM dd, yyyy HH:mm:ss")}
+                        {format(
+                          new Date(selectedVisitor.updatedAt),
+                          "MMM dd, yyyy HH:mm:ss"
+                        )}
                       </p>
                     </div>
                   </div>

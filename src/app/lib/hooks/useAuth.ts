@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
-import { AuthUser } from '../types';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
+import { AuthUser } from "../types";
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -16,7 +16,7 @@ export function useAuth() {
 
   const checkAuth = async () => {
     try {
-      const response = await axios.get('/api/auth/verify');
+      const response = await axios.get("/api/auth/verify");
       if (response.data.success) {
         setUser(response.data.data.user);
       } else {
@@ -31,7 +31,7 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
+      const response = await axios.post("/api/auth/login", { email, password });
       if (response.data.success) {
         setUser(response.data.data.user);
         return { success: true };
@@ -40,18 +40,18 @@ export function useAuth() {
     } catch (error: any) {
       return {
         success: false,
-        error: error.response?.data?.error || 'Login failed',
+        error: error.response?.data?.error || "Login failed",
       };
     }
   };
 
   const logout = async () => {
     try {
-      await axios.post('/api/auth/logout');
+      await axios.post("/api/auth/logout");
       setUser(null);
-      router.push('/login');
+      router.push("/login");
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     }
   };
 

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { clsx } from 'clsx';
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { clsx } from "clsx";
 import {
   LayoutDashboard,
   Users,
@@ -17,38 +17,40 @@ import {
   Shield,
   Bell,
   X,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface SidebarProps {
-  role: 'superadmin' | 'resident' | 'guard';
+  role: "superadmin" | "resident" | "guard";
   isOpen?: boolean;
   onClose?: () => void;
 }
 
 const menuItems = {
   superadmin: [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/superadmin' },
-    { icon: Users, label: 'Users', href: '/superadmin/users' },
-    { icon: Building, label: 'Properties', href: '/superadmin/properties' },
-    { icon: BarChart3, label: 'Analytics', href: '/superadmin/analytics' },
-    { icon: FileText, label: 'Audit Logs', href: '/superadmin/audit-logs' },
+    { icon: LayoutDashboard, label: "Dashboard", href: "/superadmin" },
+    { icon: Users, label: "Users", href: "/superadmin/users" },
+    { icon: Building, label: "Properties", href: "/superadmin/properties" },
   ],
   resident: [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/resident' },
-    { icon: CheckCircle, label: 'Approvals', href: '/resident/approvals' },
-    { icon: History, label: 'History', href: '/resident/history' },
-    { icon: Bell, label: 'Notifications', href: '/resident/notifications' },
+    { icon: LayoutDashboard, label: "Dashboard", href: "/resident" },
+    { icon: CheckCircle, label: "Approvals", href: "/resident/approvals" },
+    { icon: History, label: "History", href: "/resident/history" },
+    { icon: Bell, label: "Notifications", href: "/resident/notifications" },
   ],
   guard: [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/guard' },
-    { icon: Clock, label: 'Pending', href: '/guard/pending' },
-    { icon: Shield, label: 'Active Visitors', href: '/guard/active-visitors' },
-    { icon: UserPlus, label: 'Manual Entry', href: '/guard/manual-entry' },
-    { icon: History, label: 'History', href: '/guard/history' },
+    { icon: LayoutDashboard, label: "Dashboard", href: "/guard" },
+    { icon: Clock, label: "Pending", href: "/guard/pending" },
+    { icon: Shield, label: "Active Visitors", href: "/guard/active-visitors" },
+    { icon: UserPlus, label: "Manual Entry", href: "/guard/manual-entry" },
+    { icon: History, label: "History", href: "/guard/history" },
   ],
 };
 
-export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) {
+export default function Sidebar({
+  role,
+  isOpen = true,
+  onClose,
+}: SidebarProps) {
   const pathname = usePathname();
   const items = menuItems[role];
 
@@ -65,9 +67,9 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
       {/* Sidebar */}
       <aside
         className={clsx(
-          'fixed top-0 left-0 h-full bg-white border-r border-gray-200 transition-transform duration-300 z-50',
-          'w-64 lg:translate-x-0',
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+          "fixed top-0 left-0 h-full bg-white border-r border-gray-200 transition-transform duration-300 z-50",
+          "w-64 lg:translate-x-0",
+          isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Header */}
@@ -93,10 +95,10 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
                 href={item.href}
                 onClick={() => onClose?.()}
                 className={clsx(
-                  'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
+                  "flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors",
                   isActive
-                    ? 'bg-purple-50 text-purple-600 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? "bg-purple-50 text-purple-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
                 )}
               >
                 <Icon className="h-5 w-5" />

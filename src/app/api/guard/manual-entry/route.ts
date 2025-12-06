@@ -1,8 +1,3 @@
-// =============================================================================
-// FIXED: Manual Entry - Resident gets notification
-// File: src/app/api/guard/manual-entry/route.ts
-// =============================================================================
-
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/app/lib/db/mongoose";
 import User from "@/app/lib/db/models/User";
@@ -19,14 +14,23 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const phoneNumber = body.phoneNumber || body.phone;
-    const { name, hostResidentId, purpose, idProof, photoUrl, vehicleNumber } =
-      body;
+    const {
+      name,
+      hostResidentId,
+      purpose,
+      idProof,
+      photoUrl,
+      assetPhotoUrl, // ✅ Asset photo
+      assetDescription, // ✅ Asset description
+      vehicleNumber,
+    } = body;
 
     console.log("📝 Manual Entry Request:", {
       name,
       phone: phoneNumber,
       hostResidentId,
       purpose,
+      hasAsset: !!assetPhotoUrl,
     });
 
     // Validation
@@ -67,9 +71,6 @@ export async function POST(request: NextRequest) {
       phone: phoneNumber,
       purpose,
       hostResidentId: resident._id,
-      hostResidentName: resident.fullName,
-      hostUnitNumber: resident.unitNumber,
-      hostPhone: resident.phoneNumber,
       propertyId: resident.propertyId,
       status: "pending",
       phoneVerified: true,
@@ -77,18 +78,28 @@ export async function POST(request: NextRequest) {
       photoUrl: photoUrl || "/images/default-visitor-photo.png",
     };
 
+    // ✅ Add asset fields if provided
+    if (assetPhotoUrl) {
+      visitorData.assetPhotoUrl = assetPhotoUrl;
+    }
+    if (assetDescription) {
+      visitorData.assetDescription = assetDescription;
+    }
+
     if (vehicleNumber) visitorData.vehicleNumber = vehicleNumber;
     if (idProof) visitorData.idCardImageUrl = idProof;
 
     const visitor = await Visitor.create(visitorData);
     console.log("✅ Visitor created:", visitor._id);
 
-    // ✅ FIX 1: CREATE NOTIFICATION FOR RESIDENT
+    // Create notification for resident
     try {
       await Notification.create({
         userId: resident._id,
         title: "New Visitor Request",
-        message: `${name} is requesting approval for ${purpose}`,
+        message: `${name} is requesting approval for ${purpose}${
+          assetDescription ? ` with assets: ${assetDescription}` : ""
+        }`,
         type: "visitor_request",
         propertyId: resident.propertyId,
         relatedId: visitor._id,

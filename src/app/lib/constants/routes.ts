@@ -5,8 +5,6 @@ export const ROUTES = {
     DASHBOARD: "/superadmin",
     USERS: "/superadmin/users",
     PROPERTIES: "/superadmin/properties",
-    ANALYTICS: "/superadmin/analytics",
-    AUDIT_LOGS: "/superadmin/audit-logs",
   },
   RESIDENT: {
     DASHBOARD: "/resident",
