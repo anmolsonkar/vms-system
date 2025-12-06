@@ -26,10 +26,7 @@ export async function GET(request: NextRequest) {
     // 1. Current host (hostResidentId matches)
     // 2. Original sender who forwarded (forwardedFrom matches)
     const query: any = {
-      $or: [
-        { hostResidentId: userId },
-        { forwardedFrom: userId },
-      ],
+      $or: [{ hostResidentId: userId }, { forwardedFrom: userId }],
     };
 
     if (status && status !== "all") {
