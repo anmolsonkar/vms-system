@@ -121,15 +121,15 @@ export default function ManualEntryForm() {
       setCameraMode(mode);
       setCameraReady(false);
       setShowCamera(true);
-      
+
       // Small delay to ensure modal is rendered
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
+        video: {
           facingMode: "environment", // ✅ Rear camera (back camera)
-          width: { ideal: 1280 }, 
-          height: { ideal: 720 } 
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
       });
 
@@ -163,16 +163,17 @@ export default function ManualEntryForm() {
       }
     } catch (err: any) {
       console.error("❌ Camera error:", err);
-      
+
       let errorMessage = "Failed to access camera.";
       if (err.name === "NotAllowedError") {
-        errorMessage = "Camera permission denied. Please allow camera access in your browser settings.";
+        errorMessage =
+          "Camera permission denied. Please allow camera access in your browser settings.";
       } else if (err.name === "NotFoundError") {
         errorMessage = "No camera found on this device.";
       } else if (err.name === "NotReadableError") {
         errorMessage = "Camera is already in use by another application.";
       }
-      
+
       setError(errorMessage);
       setShowCamera(false);
     }
@@ -220,7 +221,7 @@ export default function ManualEntryForm() {
 
         // Convert to base64
         const imageData = canvas.toDataURL("image/jpeg", 0.8);
-        
+
         if (imageData && imageData.length > 100) {
           if (cameraMode === "id") {
             setFormData({ ...formData, idPhoto: imageData });
@@ -260,7 +261,10 @@ export default function ManualEntryForm() {
   };
 
   // Handle file upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "id" | "asset") => {
+  const handleFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "id" | "asset"
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -644,13 +648,99 @@ export default function ManualEntryForm() {
             />
           </div>
 
+          {/* ID Photo Capture */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Visitor Photo (Optional)
+            </label>
+
+            {!formData.idPhoto ? (
+              <div className="space-y-3">
+                {/* Take Photo and Upload Photo Buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => startCamera("id")}
+                    className="px-4 py-3 border-2 border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Camera className="w-5 h-5" />
+                    <span className="text-sm sm:text-base">Take Photo</span>
+                  </button>
+                  <label className="cursor-pointer">
+                    <div className="px-4 py-3 border-2 border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 font-medium">
+                      <Upload className="w-5 h-5" />
+                      <span className="text-sm sm:text-base">Upload Photo</span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, "id")}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => skipPhoto("id")}
+                  className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
+                >
+                  Skip Photo (Continue without photo)
+                </button>
+              </div>
+            ) : formData.idPhoto === "skipped" ? (
+              <div className="p-3 sm:p-4 bg-gray-50 border border-gray-300 rounded-lg">
+                <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                  Photo skipped - continuing without visitor photo
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, idPhoto: null })}
+                  className="text-xs sm:text-sm text-purple-600 hover:text-purple-700 underline"
+                >
+                  Add Photo Instead
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="relative rounded-lg overflow-hidden border-2 border-green-500">
+                  <img
+                    src={formData.idPhoto}
+                    alt="Captured ID"
+                    className="w-full h-auto"
+                  />
+                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1">
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                    Captured
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => retakePhoto("id")}
+                    className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    Retake
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => skipPhoto("id")}
+                    className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* ✅ NEW: Asset Photo Section */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Asset Photo (Optional)
             </label>
             <p className="text-xs text-gray-500 mb-3">
-              Capture photo of items/assets visitor is carrying (laptop, bags, equipment, etc.)
+              Capture photo of items/assets visitor is carrying (laptop, bags,
+              equipment, etc.)
             </p>
 
             {!formData.assetPhoto ? (
@@ -752,91 +842,6 @@ export default function ManualEntryForm() {
             )}
           </div>
 
-          {/* ID Photo Capture */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Visitor Photo (Optional)
-            </label>
-
-            {!formData.idPhoto ? (
-              <div className="space-y-3">
-                {/* Take Photo and Upload Photo Buttons */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => startCamera("id")}
-                    className="px-4 py-3 border-2 border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 font-medium"
-                  >
-                    <Camera className="w-5 h-5" />
-                    <span className="text-sm sm:text-base">Take Photo</span>
-                  </button>
-                  <label className="cursor-pointer">
-                    <div className="px-4 py-3 border-2 border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 font-medium">
-                      <Upload className="w-5 h-5" />
-                      <span className="text-sm sm:text-base">Upload Photo</span>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileUpload(e, "id")}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => skipPhoto("id")}
-                  className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
-                >
-                  Skip Photo (Continue without photo)
-                </button>
-              </div>
-            ) : formData.idPhoto === "skipped" ? (
-              <div className="p-3 sm:p-4 bg-gray-50 border border-gray-300 rounded-lg">
-                <p className="text-xs sm:text-sm text-gray-600 mb-2">
-                  Photo skipped - continuing without visitor photo
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, idPhoto: null })}
-                  className="text-xs sm:text-sm text-purple-600 hover:text-purple-700 underline"
-                >
-                  Add Photo Instead
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="relative rounded-lg overflow-hidden border-2 border-green-500">
-                  <img
-                    src={formData.idPhoto}
-                    alt="Captured ID"
-                    className="w-full h-auto"
-                  />
-                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1">
-                    <Check className="w-3 h-3 sm:w-4 sm:h-4" />
-                    Captured
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => retakePhoto("id")}
-                    className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-                  >
-                    Retake
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => skipPhoto("id")}
-                    className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Submit Button */}
           <button
             type="submit"
@@ -854,7 +859,9 @@ export default function ManualEntryForm() {
           <div className="bg-white rounded-lg max-w-2xl w-full p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900">
-                {cameraMode === "id" ? "Capture Visitor Photo" : "Capture Asset Photo"}
+                {cameraMode === "id"
+                  ? "Capture Visitor Photo"
+                  : "Capture Asset Photo"}
               </h3>
               <button
                 onClick={stopCamera}
@@ -866,7 +873,10 @@ export default function ManualEntryForm() {
 
             <div className="space-y-4">
               {/* Video Preview Container - NO MIRROR EFFECT */}
-              <div className="relative rounded-lg overflow-hidden bg-black" style={{ minHeight: "400px" }}>
+              <div
+                className="relative rounded-lg overflow-hidden bg-black"
+                style={{ minHeight: "400px" }}
+              >
                 <video
                   ref={videoRef}
                   autoPlay
@@ -878,13 +888,17 @@ export default function ManualEntryForm() {
                     minHeight: "400px",
                   }}
                 />
-                
+
                 {/* Loading overlay */}
                 {!cameraReady && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-75">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-                    <div className="text-white text-sm font-medium">Initializing camera...</div>
-                    <div className="text-gray-300 text-xs mt-2">Please allow camera access if prompted</div>
+                    <div className="text-white text-sm font-medium">
+                      Initializing camera...
+                    </div>
+                    <div className="text-gray-300 text-xs mt-2">
+                      Please allow camera access if prompted
+                    </div>
                   </div>
                 )}
 
@@ -901,7 +915,8 @@ export default function ManualEntryForm() {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
-                  📸 Position the {cameraMode === "id" ? "visitor" : "asset"} in the center and click "Capture Photo"
+                  📸 Position the {cameraMode === "id" ? "visitor" : "asset"} in
+                  the center and click "Capture Photo"
                 </p>
               </div>
 
